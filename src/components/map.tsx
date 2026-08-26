@@ -33,7 +33,7 @@ export default function MapComponent({
         sources: {
           protomaps: {
             type: "vector",
-            url: "pmtiles:///boone.pmtiles",
+            url: "pmtiles://https://assets.parkwayoverlooks.com/map/boone.pmtiles",
           },
         },
 
