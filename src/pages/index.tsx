@@ -1,3 +1,4 @@
+import Footer from "@/components/navigation/footer";
 import {
   Box,
   Button,
@@ -10,10 +11,12 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
+import NavBar from "../components/navigation/navbar";
 
 const properties = [
   {
     name: "University Highlands",
+    slug: "university-highlands",
     price: "$850",
     details: "2 Bed • 2 Bath • AppalCART Bus Route Nearby",
     image: "https://picsum.photos/400/200?random=1",
@@ -21,6 +24,7 @@ const properties = [
   },
   {
     name: "The Standard at Boone",
+    slug: "the-standard-at-boone",
     price: "$1,050",
     details: "1 Bed • 1 Bath • Walking Distance to Campus",
     image: "https://picsum.photos/400/200?random=2",
@@ -28,6 +32,7 @@ const properties = [
   },
   {
     name: "CP West Apartments",
+    slug: "cp-west-apartments",
     price: "$720",
     details: "3 Bed • 2 Bath • On-site Laundry",
     image: "https://picsum.photos/400/200?random=3",
@@ -43,64 +48,7 @@ export default function Home() {
       color="#333"
       fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
     >
-      {/* Header */}
-      <Box
-        as="header"
-        bg="#111111"
-        color="white"
-        px={{ base: 4, md: 8 }}
-        py={4}
-        borderBottom="4px solid"
-        borderColor="#ffc72c"
-      >
-        <Flex
-          maxW="1200px"
-          mx="auto"
-          align="center"
-          justify="space-between"
-          gap={6}
-          flexWrap="wrap"
-        >
-          {/* Logo */}
-          <Text
-            fontSize="1.5rem"
-            fontWeight="bold"
-            color="white"
-            whiteSpace="nowrap"
-          >
-            Mountaineer
-            <Text as="span" color="#ffc72c">
-              Housing Hub
-            </Text>
-          </Text>
-
-          {/* Navigation */}
-          <Flex
-            as="nav"
-            gap={{ base: 3, md: 5 }}
-            align="center"
-            flexWrap="wrap"
-          >
-            {["Search", "Map & Transit", "Submit Review", "Login"].map(
-              (item) => (
-                <NextLink key={item} href="#" passHref>
-                  <Text
-                    key={item}
-                    fontWeight="500"
-                    color="white"
-                    _hover={{
-                      color: "#ffc72c",
-                      textDecoration: "none",
-                    }}
-                  >
-                    {item}
-                  </Text>
-                </NextLink>
-              ),
-            )}
-          </Flex>
-        </Flex>
-      </Box>
+      <NavBar />
 
       {/* Hero */}
       <Box
@@ -241,7 +189,7 @@ export default function Home() {
                 </Flex>
 
                 {/* Details Button */}
-                <NextLink href="#">
+                <NextLink href={`/properties/${property.slug}`}>
                   <Button
                     display="block"
                     w="100%"
@@ -263,21 +211,7 @@ export default function Home() {
         </SimpleGrid>
       </Container>
 
-      {/* Footer */}
-      <Box
-        as="footer"
-        bg="#111111"
-        color="white"
-        textAlign="center"
-        py={6}
-        mt={12}
-        borderTop="4px solid"
-        borderColor="#ffc72c"
-      >
-        <Text fontSize="sm">
-          © 2026 Mountaineer Housing Hub • App State CIS 4850 Project Team
-        </Text>
-      </Box>
+      <Footer />
     </Box>
   );
 }
