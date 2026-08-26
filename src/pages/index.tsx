@@ -9,6 +9,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import NextLink from "next/link";
 
 const properties = [
   {
@@ -82,20 +83,20 @@ export default function Home() {
           >
             {["Search", "Map & Transit", "Submit Review", "Login"].map(
               (item) => (
-                <Text
-                  key={item}
-                  as="a"
-                  href="#"
-                  fontWeight="500"
-                  color="white"
-                  _hover={{
-                    color: "#ffc72c",
-                    textDecoration: "none",
-                  }}
-                >
-                  {item}
-                </Text>
-              )
+                <NextLink key={item} href="#" passHref>
+                  <Text
+                    key={item}
+                    fontWeight="500"
+                    color="white"
+                    _hover={{
+                      color: "#ffc72c",
+                      textDecoration: "none",
+                    }}
+                  >
+                    {item}
+                  </Text>
+                </NextLink>
+              ),
             )}
           </Flex>
         </Flex>
@@ -105,9 +106,9 @@ export default function Home() {
       <Box
         as="section"
         position="relative"
-        bgImage="linear-gradient(rgba(17, 17, 17, 0.8), rgba(17, 17, 17, 0.8)), url('https://picsum.photos/1200/500')"
-        bgPosition="center"
-        bgSize="cover"
+        backgroundImage="linear-gradient(rgba(17, 17, 17, 0.8), rgba(17, 17, 17, 0.8)), url('https://picsum.photos/1200/500')"
+        backgroundPosition="center"
+        backgroundSize="cover"
         color="white"
         textAlign="center"
         px={4}
@@ -123,10 +124,7 @@ export default function Home() {
               Find Your Off-Campus Home in Boone
             </Heading>
 
-            <Text
-              fontSize={{ base: "1rem", md: "1.1rem" }}
-              color="#dddddd"
-            >
+            <Text fontSize={{ base: "1rem", md: "1.1rem" }} color="#dddddd">
               Real apartments. Real students. Real experiences.
             </Text>
 
@@ -171,11 +169,7 @@ export default function Home() {
       </Box>
 
       {/* Listings */}
-      <Container
-        maxW="1200px"
-        py={8}
-        px={{ base: 4, md: 6 }}
-      >
+      <Container maxW="1200px" py={8} px={{ base: 4, md: 6 }}>
         <Heading
           as="h2"
           display="inline-block"
@@ -189,10 +183,7 @@ export default function Home() {
           Featured Student Properties
         </Heading>
 
-        <SimpleGrid
-          columns={{ base: 1, md: 2, lg: 3 }}
-          gap={8}
-        >
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
           {properties.map((property) => (
             <Box
               key={property.name}
@@ -210,18 +201,13 @@ export default function Home() {
                 h="200px"
                 bgImage={`url('${property.image}')`}
                 bgSize="cover"
-                bgPosition="center"
+                position="center"
                 bgColor="#ccc"
               />
 
               {/* Property Content */}
               <Box p={6}>
-                <Heading
-                  as="h3"
-                  fontSize="1.25rem"
-                  color="#111111"
-                  mb={2}
-                >
+                <Heading as="h3" fontSize="1.25rem" color="#111111" mb={2}>
                   {property.name}
                 </Heading>
 
@@ -234,11 +220,7 @@ export default function Home() {
                   From {property.price} / mo
                 </Text>
 
-                <Text
-                  fontSize="0.9rem"
-                  color="#666"
-                  mb={4}
-                >
+                <Text fontSize="0.9rem" color="#666" mb={4}>
                   {property.details}
                 </Text>
 
@@ -259,22 +241,22 @@ export default function Home() {
                 </Flex>
 
                 {/* Details Button */}
-                <Button
-                  as="a"
-                  href="#"
-                  display="block"
-                  w="100%"
-                  mt={4}
-                  bg="#111111"
-                  color="white"
-                  borderRadius="4px"
-                  fontWeight="bold"
-                  _hover={{
-                    bg="#333333",
-                  }}
-                >
-                  View Full Profile
-                </Button>
+                <NextLink href="#">
+                  <Button
+                    display="block"
+                    w="100%"
+                    mt={4}
+                    bg="#111111"
+                    color="white"
+                    borderRadius="4px"
+                    fontWeight="bold"
+                    _hover={{
+                      background: "#333333",
+                    }}
+                  >
+                    View Full Profile
+                  </Button>
+                </NextLink>
               </Box>
             </Box>
           ))}
