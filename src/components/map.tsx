@@ -1,5 +1,3 @@
-"use client";
-
 import { registerPMTiles } from "@/utils/pmtiles";
 import { Box } from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";
@@ -24,8 +22,7 @@ export default function MapComponent({
       // Boone, NC
       center: [-81.6746, 36.2168],
 
-      // Adjust this to control how much of Boone you see
-      zoom: 12,
+      zoom: 13,
 
       style: {
         version: 8,
