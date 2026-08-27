@@ -1,4 +1,4 @@
-import { Box } from "@chakra-ui/react";
+import { Box, Container, Heading } from "@chakra-ui/react";
 import NavBar from "../components/navigation/navbar";
 export default function Search() {
   return (
@@ -9,6 +9,11 @@ export default function Search() {
       fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
     >
       <NavBar />
+      <Container maxW="1200px" py={10}>
+        <Heading color="#111111" mb={2}>
+          Search Page
+        </Heading>
+      </Container>
     </Box>
   );
 }
