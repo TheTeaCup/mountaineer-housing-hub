@@ -1,3 +1,4 @@
+import SEO from "@/components/seo";
 import { Box } from "@chakra-ui/react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
@@ -16,20 +17,23 @@ export default function Map() {
       : undefined;
 
   return (
-    <Box
-      h="100vh"
-      overflow="hidden"
-      bg="#f8f9fa"
-      color="#333"
-      fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
-      display="flex"
-      flexDirection="column"
-    >
-      <NavBar />
+    <>
+      <SEO title="Map" />
+      <Box
+        h="100vh"
+        overflow="hidden"
+        bg="#f8f9fa"
+        color="#333"
+        fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
+        display="flex"
+        flexDirection="column"
+      >
+        <NavBar />
 
-      <Box position="relative" flex="1" minH="0" w="100%">
-        <MapComponent propertyQuery={propertyQuery} />
+        <Box position="relative" flex="1" minH="0" w="100%">
+          <MapComponent propertyQuery={propertyQuery} />
+        </Box>
       </Box>
-    </Box>
+    </>
   );
 }

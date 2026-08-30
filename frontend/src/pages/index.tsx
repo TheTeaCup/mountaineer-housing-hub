@@ -1,5 +1,6 @@
 import Footer from "@/components/navigation/footer";
 import PropertiesCard from "@/components/properties/card";
+import SEO from "@/components/seo";
 import {
   Box,
   Button,
@@ -42,103 +43,106 @@ const properties = [
 
 export default function Home() {
   return (
-    <Box
-      minH="100vh"
-      bg="#f8f9fa"
-      color="#333"
-      fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
-    >
-      <NavBar />
-
-      {/* Hero */}
+    <>
+      <SEO />
       <Box
-        as="section"
-        position="relative"
-        backgroundImage="linear-gradient(rgba(17, 17, 17, 0.8), rgba(17, 17, 17, 0.8)), url('https://picsum.photos/1200/500')"
-        backgroundPosition="center"
-        backgroundSize="cover"
-        color="white"
-        textAlign="center"
-        px={4}
-        py={{ base: 16, md: 20 }}
+        minH="100vh"
+        bg="#f8f9fa"
+        color="#333"
+        fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
       >
-        <Container maxW="900px">
-          <VStack gap={4}>
-            <Heading
-              as="h1"
-              fontSize={{ base: "2rem", md: "2.5rem" }}
-              lineHeight="1.2"
-            >
-              Find Your Off-Campus Home in Boone
-            </Heading>
+        <NavBar />
 
-            <Text fontSize={{ base: "1rem", md: "1.1rem" }} color="#dddddd">
-              Real apartments. Real students. Real experiences.
-            </Text>
-
-            {/* Search */}
-            <Flex
-              bg="white"
-              p="10px"
-              borderRadius="8px"
-              maxW="700px"
-              w="100%"
-              boxShadow="0 4px 15px rgba(0,0,0,0.3)"
-              gap={2}
-              mt={4}
-            >
-              <Input
-                flex="1"
-                border="none"
-                color="#333"
-                fontSize="1rem"
-                px={3}
-                _focus={{
-                  boxShadow: "none",
-                }}
-                placeholder="Search by name, price, or 'pet friendly, near bus stop'..."
-              />
-
-              <Button
-                bg="#ffc72c"
-                color="#111111"
-                px={6}
-                fontWeight="bold"
-                borderRadius="5px"
-                _hover={{
-                  bg: "#d9a714",
-                }}
-              >
-                Search
-              </Button>
-            </Flex>
-          </VStack>
-        </Container>
-      </Box>
-
-      {/* Listings */}
-      <Container maxW="1200px" py={8} px={{ base: 4, md: 6 }}>
-        <Heading
-          as="h2"
-          display="inline-block"
-          fontSize={{ base: "1.5rem", md: "1.8rem" }}
-          color="#111111"
-          mb={6}
-          pb={1}
-          borderBottom="2px solid"
-          borderColor="#ffc72c"
+        {/* Hero */}
+        <Box
+          as="section"
+          position="relative"
+          backgroundImage="linear-gradient(rgba(17, 17, 17, 0.8), rgba(17, 17, 17, 0.8)), url('https://picsum.photos/1200/500')"
+          backgroundPosition="center"
+          backgroundSize="cover"
+          color="white"
+          textAlign="center"
+          px={4}
+          py={{ base: 16, md: 20 }}
         >
-          Featured Student Properties
-        </Heading>
+          <Container maxW="900px">
+            <VStack gap={4}>
+              <Heading
+                as="h1"
+                fontSize={{ base: "2rem", md: "2.5rem" }}
+                lineHeight="1.2"
+              >
+                Find Your Off-Campus Home in Boone
+              </Heading>
 
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
-          {properties.map((property) => (
-            <PropertiesCard key={property.slug} property={property} />
-          ))}
-        </SimpleGrid>
-      </Container>
+              <Text fontSize={{ base: "1rem", md: "1.1rem" }} color="#dddddd">
+                Real apartments. Real students. Real experiences.
+              </Text>
 
-      <Footer />
-    </Box>
+              {/* Search */}
+              <Flex
+                bg="white"
+                p="10px"
+                borderRadius="8px"
+                maxW="700px"
+                w="100%"
+                boxShadow="0 4px 15px rgba(0,0,0,0.3)"
+                gap={2}
+                mt={4}
+              >
+                <Input
+                  flex="1"
+                  border="none"
+                  color="#333"
+                  fontSize="1rem"
+                  px={3}
+                  _focus={{
+                    boxShadow: "none",
+                  }}
+                  placeholder="Search by name, price, or 'pet friendly, near bus stop'..."
+                />
+
+                <Button
+                  bg="#ffc72c"
+                  color="#111111"
+                  px={6}
+                  fontWeight="bold"
+                  borderRadius="5px"
+                  _hover={{
+                    bg: "#d9a714",
+                  }}
+                >
+                  Search
+                </Button>
+              </Flex>
+            </VStack>
+          </Container>
+        </Box>
+
+        {/* Listings */}
+        <Container maxW="1200px" py={8} px={{ base: 4, md: 6 }}>
+          <Heading
+            as="h2"
+            display="inline-block"
+            fontSize={{ base: "1.5rem", md: "1.8rem" }}
+            color="#111111"
+            mb={6}
+            pb={1}
+            borderBottom="2px solid"
+            borderColor="#ffc72c"
+          >
+            Featured Student Properties
+          </Heading>
+
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
+            {properties.map((property) => (
+              <PropertiesCard key={property.slug} property={property} />
+            ))}
+          </SimpleGrid>
+        </Container>
+
+        <Footer />
+      </Box>
+    </>
   );
 }
