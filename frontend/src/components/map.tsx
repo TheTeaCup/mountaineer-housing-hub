@@ -1,5 +1,3 @@
-"use client";
-
 import { registerPMTiles } from "@/utils/pmtiles";
 import { Box } from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";

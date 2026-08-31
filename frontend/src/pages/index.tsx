@@ -20,7 +20,7 @@ const properties = [
   {
     name: "University Highlands",
     slug: "university-highlands",
-    price: "$850",
+    price: "$656",
     details: "2 Bed • 2 Bath • AppalCART Bus Route Nearby",
     image: "/assets/properties/university-highlands.png",
     badges: ["🐾 Pet Friendly", "🅿️ Free Parking", "⭐ 4.2/5 Verified"],
