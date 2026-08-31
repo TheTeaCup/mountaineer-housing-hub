@@ -1,10 +1,19 @@
+"use client";
+
 import SEO from "@/components/seo";
-import { Box, Container, Heading, Text } from "@chakra-ui/react";
+import ReviewForm from "@/components/submissions/review-form";
+import { Box, Container } from "@chakra-ui/react";
+import { useState } from "react";
 import NavBar from "../components/navigation/navbar";
+import ApartmentForm from "../components/submissions/apartment-form";
+
 export default function Submit() {
+  const [showApartmentForm, setShowApartmentForm] = useState(false);
+
   return (
     <>
       <SEO title="Submit" />
+
       <Box
         minH="100vh"
         bg="#f8f9fa"
@@ -12,15 +21,13 @@ export default function Submit() {
         fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
       >
         <NavBar />
-        <Container maxW="1200px" py={10}>
-          <Heading color="#111111" mb={2}>
-            Submit Page
-          </Heading>
-          <Text>
-            This would start off as a form to submit a review but if the
-            apartment is not listed from the drop down then the form would turn
-            into a submission form.
-          </Text>
+
+        <Container maxW="800px" py={10}>
+          {showApartmentForm ? (
+            <ApartmentForm onBack={() => setShowApartmentForm(false)} />
+          ) : (
+            <ReviewForm onSubmitApartment={() => setShowApartmentForm(true)} />
+          )}
         </Container>
       </Box>
     </>
