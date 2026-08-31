@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import NavBar from "../components/navigation/navbar";
+import SEO from "@/components/seo";
 
 const properties = [
   {
@@ -33,12 +34,12 @@ const properties = [
     badges: ["🐾 No Pets", "🅿️ Garage Parking", "⭐ 4.7/5 Verified"],
   },
   {
-    name: "CP West Apartments",
-    slug: "cp-west-apartments",
-    price: "$720",
+    name: "The Finmore at 241",
+    slug: "the-finmore",
+    price: "$799",
     details: "3 Bed • 2 Bath • On-site Laundry",
     image: "https://picsum.photos/400/200?random=3",
-    badges: ["🐾 Pet Friendly", "🅿️ Permit Required", "⭐ 3.9/5 Verified"],
+    badges: ["🐾 Pet Friendly", "🅿️ Permit Required", "⭐ 4.3/5 Verified"],
   },
 ];
 
@@ -58,6 +59,8 @@ export default function Home() {
   };
 
   return (
+    <>
+    <SEO />
     <Box
       minH="100vh"
       bg="#f8f9fa"
@@ -164,5 +167,6 @@ export default function Home() {
 
       <Footer />
     </Box>
+    </>
   );
 }
