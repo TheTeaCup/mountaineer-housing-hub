@@ -4,8 +4,8 @@ import { registerPMTiles } from "@/utils/pmtiles";
 import { Box } from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import protomaps from "protomaps-themes-base";
 import { useRouter } from "next/navigation";
+import protomaps from "protomaps-themes-base";
 import { useEffect, useRef } from "react";
 
 const properties = [
@@ -19,7 +19,7 @@ const properties = [
     id: "the-standard-at-boone",
     name: "The Standard at Boone",
     slug: "the-standard-at-boone",
-    coordinates: [-81.6719444, 36.2072500],
+    coordinates: [-81.6719444, 36.20725],
   },
   {
     id: "the-finmore",
@@ -96,8 +96,7 @@ export default function MapComponent({
         glyphs:
           "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
 
-        sprite:
-          "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+        sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
 
         layers: protomaps("protomaps", "light", "en"),
       },
