@@ -36,6 +36,7 @@ export const auth = betterAuth({
 
   socialProviders: {
     google: {
+      hd: "appstate.edu",
       clientId: config.GOOGLE_CLIENT_ID,
       clientSecret: config.GOOGLE_CLIENT_SECRET,
       redirectURI: new URL("/auth/callback/google", config.FRONTEND_URL).href,

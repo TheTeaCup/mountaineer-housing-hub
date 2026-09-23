@@ -1,5 +1,5 @@
 import type { RowDataPacket } from "mysql2/promise";
-import { db } from "./connection.js";
+import { db } from "./connections.js";
 
 export async function query<T = RowDataPacket>(
   sql: string,

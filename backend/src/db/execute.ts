@@ -1,5 +1,5 @@
 import type { ResultSetHeader } from "mysql2/promise";
-import { db } from "./connection.js";
+import { db } from "./connections.js";
 
 export async function execute(
   sql: string,

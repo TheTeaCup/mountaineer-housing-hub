@@ -5,10 +5,36 @@ import {
   getSessionFromCtx,
 } from "better-auth/api";
 
-// Shared by production and the isolated authentication integration tests.
+export function isVerifiedAppStateUser(
+  user: { email?: unknown; emailVerified?: unknown } | null | undefined,
+): boolean {
+  return (
+    user?.emailVerified === true &&
+    typeof user.email === "string" &&
+    /^[^@\s]+@appstate\.edu$/i.test(user.email)
+  );
+}
+
+// Shared by production and the isolated authentication tests.
 export const authPolicy = {
+  emailAndPassword: {
+    enabled: false,
+  },
   user: {
     modelName: "users",
+    // Runs for new users, account linking, and returning OAuth sign-ins.
+    validateUserInfo: ({ user, source }) => {
+      if (
+        source.method !== "oauth" ||
+        source.oauth?.providerId !== "google" ||
+        !isVerifiedAppStateUser(user)
+      ) {
+        return {
+          error: "appstate_google_required",
+          errorDescription: "Sign in with your verified @appstate.edu Google account.",
+        };
+      }
+    },
     additionalFields: {
       status: {
         type: "string",
@@ -68,7 +94,10 @@ export const authPolicy = {
             session.userId,
           );
 
-          if ((user as { status?: string } | null)?.status !== "active") {
+          if (
+            (user as { status?: string } | null)?.status !== "active" ||
+            !isVerifiedAppStateUser(user)
+          ) {
             throw new APIError("FORBIDDEN", {
               message: "This account is unavailable.",
             });
@@ -92,7 +121,10 @@ export const authPolicy = {
             session.user.id,
           );
 
-          if ((user as { status?: string } | null)?.status !== "active") {
+          if (
+            (user as { status?: string } | null)?.status !== "active" ||
+            !isVerifiedAppStateUser(user)
+          ) {
             throw new APIError("FORBIDDEN", {
               message: "This account is unavailable.",
             });
