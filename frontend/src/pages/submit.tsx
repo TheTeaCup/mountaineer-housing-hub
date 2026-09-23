@@ -1,5 +1,3 @@
-"use client";
-
 import SEO from "@/components/seo";
 import ReviewForm from "@/components/submissions/review-form";
 import { Box, Container } from "@chakra-ui/react";

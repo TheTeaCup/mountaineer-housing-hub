@@ -1,6 +1,7 @@
 import SEO from "@/components/seo";
 import { Box, Container, Heading, Text } from "@chakra-ui/react";
 import NavBar from "../../components/navigation/navbar";
+
 export default function PropertiesList() {
   return (
     <>

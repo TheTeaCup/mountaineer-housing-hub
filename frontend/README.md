@@ -1,4 +1,15 @@
 # # Mountaineer Housing Hub - Frontend
+
+You will need a file named `.dev.vars` with the following information:
+```
+NEXTJS_ENV=development
+```
+
+And `.env` with:
+```
+TBD
+```
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 
 ## Getting Started
