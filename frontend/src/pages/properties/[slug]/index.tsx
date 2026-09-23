@@ -189,7 +189,7 @@ export default function PropertySlug() {
             onClick={() => router.back()}
           >
             <FiArrowLeft />
-            Back to map
+            Back
           </Button>
 
           {/* Header */}
