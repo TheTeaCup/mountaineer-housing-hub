@@ -9,6 +9,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p .",
+    "db:setup": "tsx src/scripts/setupDatabase.ts",
+    "check:services": "tsx src/scripts/checkServices.ts",
     "format": "prettier --write \"**/*.{json,ts,sql}\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"

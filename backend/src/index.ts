@@ -8,6 +8,7 @@ import { config } from "./config.js";
 import redis from "./db/redis.js";
 import { toNodeHandler } from "better-auth/node";
 import { verifiedProxyClientIp } from "./utils/proxyClientIp.js";
+import { db } from "./db/connections.js";
 
 async function startServer() {
   const app = express();
@@ -89,11 +90,41 @@ async function startServer() {
     },
   );
 
-  await redis.connect();
+  const connection = await db.getConnection();
+  try {
+    await connection.ping();
+  } finally {
+    connection.release();
+  }
 
-  app.listen(config.PORT ?? 3000, () =>
-    console.log(`WebServer running on http://localhost:${config.PORT ?? 3000}`),
+  await redis.connect();
+  await redis.ping();
+
+  const server = app.listen(config.PORT, () =>
+    console.log(`WebServer running on http://localhost:${config.PORT}`),
   );
+
+  const shutdown = (signal: string) => {
+    console.log(`${signal} received; shutting down`);
+
+    server.close(async () => {
+      await Promise.allSettled([
+        db.end(),
+        redis.isOpen ? redis.quit() : Promise.resolve(),
+      ]);
+      process.exit(0);
+    });
+  };
+
+  process.once("SIGINT", () => shutdown("SIGINT"));
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
 }
 
-startServer();
+startServer().catch(async (error: unknown) => {
+  console.error("Backend failed to start:", error);
+  await Promise.allSettled([
+    db.end(),
+    redis.isOpen ? redis.quit() : Promise.resolve(),
+  ]);
+  process.exit(1);
+});

@@ -10,8 +10,8 @@ CREATE TABLE auth_sessions (
   ipAddress TEXT NULL,
   userAgent TEXT NULL,
   INDEX idx_auth_session_user (userId),
-  CONSTRAINT fk_session_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT fk_session_user FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE auth_accounts (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -29,8 +29,8 @@ CREATE TABLE auth_accounts (
   updatedAt TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   UNIQUE KEY uq_auth_provider_account (providerId, accountId),
   INDEX idx_auth_account_user (userId),
-  CONSTRAINT fk_account_user FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT fk_account_user FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Required even for Google-only login: OAuth state/PKCE and the configured
 -- oneTimeToken plugin use this table. It is not just for verifying emails.
@@ -42,11 +42,11 @@ CREATE TABLE verification (
   createdAt TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updatedAt TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   INDEX idx_verification_identifier (identifier)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE auth_rate_limits (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `key` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL UNIQUE,
   count INT NOT NULL,
   lastRequest BIGINT NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

@@ -3,6 +3,46 @@
 The backend uses TypeScript, Express, MySQL (`mysql2`), and Better Auth.
 Redis and object storage are configured separately for the application.
 
+## Connect MySQL and Redis
+
+Copy `example.env` to `.env` and replace the MySQL and Redis placeholders with
+the credentials from the services you created. Keep `.env` local; it is ignored
+by Git. Redis URLs must use one of these forms:
+
+```text
+redis://:PASSWORD@HOST:PORT
+rediss://:PASSWORD@HOST:PORT
+```
+
+Use `rediss://` when the provider requires TLS. Percent-encode reserved
+characters in usernames and passwords when placing them in a URL.
+
+Check both services without starting OAuth or object storage:
+
+```powershell
+npm run check:services
+```
+
+The command only pings the two services and counts tables in the configured
+database. If MySQL says the host is not allowed, grant the configured database
+user access from the backend host (or the provider's recommended network range)
+instead of using a globally privileged user. If it reports zero tables, run the
+schema bootstrap below.
+
+For a brand-new MySQL or MariaDB server/database, the repository can perform the
+bootstrap:
+
+```powershell
+npm run db:setup
+```
+
+The setup reads database values from `.env`, confirms the server is MySQL 8.0.16+
+or MariaDB 10.6+, creates the configured database when absent, and loads every
+schema file in order. It refuses to run if the database contains any tables. If
+the normal application user cannot create databases, set `DB_SETUP_USERNAME`
+and `DB_SETUP_PASSWORD` locally to a temporary administrator account; these
+values must never be committed.
+
 Sign-in is Google OAuth only, restricted to verified `@appstate.edu` addresses.
 The Google provider requires the `appstate.edu` hosted-domain claim, and the
 server validates the exact email domain for new users, account linking, and
@@ -64,9 +104,9 @@ amenities, and individual units can be added later without changing this core.
 
 ## Create a development database
 
-Use MySQL 8.0.16 or newer (a current MySQL 8.x release is preferable). The schema
-uses enforced CHECK constraints and the MySQL `utf8mb4_0900_ai_ci` collation;
-it is not intended for SQLite or MariaDB.
+Use MySQL 8.0.16 or newer, or MariaDB 10.6 or newer. The schema uses enforced
+CHECK constraints and the cross-compatible `utf8mb4_unicode_ci` collation; it
+is not intended for SQLite.
 
 Install backend dependencies with `npm ci`. From the **backend directory**, open
 the MySQL client with a database user allowed to create tables:
@@ -79,7 +119,7 @@ Then run:
 
 ```sql
 CREATE DATABASE mountaineer_housing_hub
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE mountaineer_housing_hub;
 SOURCE src/db/schemas/init.sql;
 SHOW TABLES;

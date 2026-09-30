@@ -1,5 +1,4 @@
 import { betterAuth } from "better-auth";
-import { getOAuthState } from "better-auth/api";
 import { bearer } from "better-auth/plugins";
 import { oneTimeToken } from "better-auth/plugins/one-time-token";
 import { db } from "../db/connections.js";
@@ -7,7 +6,6 @@ import { authPolicy } from "./policy.js";
 import { config } from "../config.js";
 import { query } from "../db/query.js";
 import { ensureAuthProfile } from "./ensureProfile.js";
-import { handleNewUserTasks } from "../utils/newUserTasks.js";
 
 export const auth = betterAuth({
   appName: "Mountaineer Housing Hub",
@@ -46,20 +44,7 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: async (user, context): Promise<void> => {
-          const username = await ensureAuthProfile(user.id);
-
-          const oauthState = await getOAuthState();
-
-          const ref = context?.body?.ref ?? oauthState?.ref;
-
-          await handleNewUserTasks({
-            userId: Number(user.id),
-            username,
-            email: user.email,
-            provider: context?.params?.id === "google" ? "google" : "local",
-          });
-        },
+     
       },
     },
 

@@ -1,5 +1,6 @@
 import Footer from "@/components/navigation/footer";
 import PropertiesCard from "@/components/properties/card";
+import { properties } from "@/data/properties";
 import SEO from "@/components/seo";
 import {
   Box,
@@ -13,35 +14,9 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
+import NextLink from "next/link";
 import { useState } from "react";
 import NavBar from "../components/navigation/navbar";
-
-const properties = [
-  {
-    name: "University Highlands",
-    slug: "university-highlands",
-    price: "$656",
-    details: "2 Bed • 2 Bath • AppalCART Bus Route Nearby",
-    image: "/assets/properties/university-highlands.png",
-    badges: ["🐾 Pet Friendly", "🅿️ Free Parking", "⭐ 4.2/5 Verified"],
-  },
-  {
-    name: "The Standard at Boone",
-    slug: "the-standard-at-boone",
-    price: "$1,050",
-    details: "1 Bed • 1 Bath • Walking Distance to Campus",
-    image: "/assets/properties/the-standard.png",
-    badges: ["🐾 No Pets", "🅿️ Garage Parking", "⭐ 4.7/5 Verified"],
-  },
-  {
-    name: "The Finmore at 241",
-    slug: "the-finmore",
-    price: "$799",
-    details: "3 Bed • 2 Bath • On-site Laundry",
-    image: "/assets/properties/finmore.png",
-    badges: ["🐾 Pet Friendly", "🅿️ Permit Required", "⭐ 4.3/5 Verified"],
-  },
-];
 
 export default function Home() {
   const router = useRouter();
@@ -145,18 +120,30 @@ export default function Home() {
 
         {/* Listings */}
         <Container maxW="1200px" py={8} px={{ base: 4, md: 6 }}>
-          <Heading
-            as="h2"
-            display="inline-block"
-            fontSize={{ base: "1.5rem", md: "1.8rem" }}
-            color="#111111"
-            mb={6}
-            pb={1}
-            borderBottom="2px solid"
-            borderColor="#ffc72c"
-          >
-            Featured Student Properties
-          </Heading>
+          <Flex align="center" justify="space-between" gap={4} mb={6}>
+            <Heading
+              as="h2"
+              display="inline-block"
+              fontSize={{ base: "1.5rem", md: "1.8rem" }}
+              color="#111111"
+              pb={1}
+              borderBottom="2px solid"
+              borderColor="#ffc72c"
+            >
+              Featured Student Properties
+            </Heading>
+
+            <NextLink href="/properties" style={{ textDecoration: "none" }}>
+              <Text
+                color="#725600"
+                fontWeight="700"
+                whiteSpace="nowrap"
+                _hover={{ color: "#111111" }}
+              >
+                View all properties
+              </Text>
+            </NextLink>
+          </Flex>
 
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
             {properties.map((property) => (

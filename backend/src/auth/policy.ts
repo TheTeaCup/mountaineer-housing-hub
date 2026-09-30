@@ -31,7 +31,8 @@ export const authPolicy = {
       ) {
         return {
           error: "appstate_google_required",
-          errorDescription: "Sign in with your verified @appstate.edu Google account.",
+          errorDescription:
+            "Sign in with your verified @appstate.edu Google account.",
         };
       }
     },

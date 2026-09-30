@@ -6,6 +6,7 @@ export default function NavBar() {
   const pathname = usePathname();
 
   const navItems = [
+    { label: "Properties", href: "/properties" },
     { label: "Search", href: "/search" },
     { label: "Map", href: "/map" },
     { label: "Submit", href: "/submit" },

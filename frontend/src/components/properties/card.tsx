@@ -1,4 +1,4 @@
-import { Property } from "@/types/properties";
+import { Property } from "@/data/properties";
 import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 
