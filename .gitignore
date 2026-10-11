@@ -56,3 +56,5 @@ next-env.d.ts
 !.dev.vars.example
 package-lock.json
 .next
+.npm/
+.pm2/
