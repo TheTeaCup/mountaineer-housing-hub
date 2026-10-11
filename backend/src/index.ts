@@ -26,12 +26,7 @@ async function startServer() {
       credentials: true,
     }),
   );
-  app.set(
-    "trust proxy",
-    config.TRUST_PROXY
-      ? config.TRUST_PROXY.split(",").map((value) => value.trim())
-      : false,
-  );
+  app.set("trust proxy", config.TRUST_PROXY);
 
   app.use((req, res, next) => {
     const start = Date.now();

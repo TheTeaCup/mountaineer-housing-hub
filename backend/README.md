@@ -45,6 +45,12 @@ them. For local development, continue using `npm run dev`.
 
 ## Connect MySQL and Redis
 
+`TRUST_PROXY` accepts blank/`false` (disabled), `true` (all proxies), a numeric
+hop count such as `1`, or comma-separated IP/CIDR ranges and Express aliases
+such as `loopback`. Select the value for the reverse proxy in front of the API;
+Pterodactyl itself does not determine the correct proxy hop count. `true` requires
+the reverse proxy to overwrite forwarded headers before they reach the API.
+
 Copy `example.env` to `.env` and replace the MySQL and Redis placeholders with
 the credentials from the services you created. Keep `.env` local; it is ignored
 by Git. Redis URLs must use one of these forms:

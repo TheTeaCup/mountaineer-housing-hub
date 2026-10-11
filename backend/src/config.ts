@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { parseTrustProxy } from "./utils/trustProxy.js";
 
 dotenv.config();
 
@@ -89,7 +90,7 @@ export const config = {
   GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI: GOOGLE_REDIRECT_URI ?? "",
-  TRUST_PROXY: process.env.TRUST_PROXY ?? "",
+  TRUST_PROXY: parseTrustProxy(process.env.TRUST_PROXY),
   AUTH_PROXY_SECRET: process.env.AUTH_PROXY_SECRET,
   CLOUDFLARE_R2: {
     ACCESS_KEY_ID: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
