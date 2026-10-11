@@ -61,6 +61,43 @@ async function startServer() {
   });
 
   // Better Auth MUST be mounted before body parsing
+  app.get("/auth/google/start", async (req, res, next) => {
+    try {
+      const response = await auth.api.signInSocial({
+        headers: fromNodeHeaders(req.headers),
+        body: {
+          provider: "google",
+          callbackURL: new URL("/", config.FRONTEND_URL).href,
+          errorCallbackURL: new URL(
+            "/auth/login?error=google",
+            config.FRONTEND_URL,
+          ).href,
+          disableRedirect: true,
+        },
+        asResponse: true,
+      });
+      if (!response.ok) {
+        res.redirect(
+          new URL("/auth/login?error=google", config.FRONTEND_URL).href,
+        );
+        return;
+      }
+      const result = (await response.json()) as { url?: string };
+      const destination = result.url ? new URL(result.url) : undefined;
+      if (
+        destination?.protocol !== "https:" ||
+        destination.hostname !== "accounts.google.com"
+      ) {
+        throw new Error("Google sign-in returned an invalid redirect.");
+      }
+      // Preserve every Set-Cookie header on the browser navigation response.
+      res.setHeader("Set-Cookie", response.headers.getSetCookie());
+      res.setHeader("Cache-Control", "no-store");
+      res.redirect(destination.href);
+    } catch (error) {
+      next(error);
+    }
+  });
   app.all("/auth/{*splat}", toNodeHandler(auth));
 
   // Parse JSON for all other routes

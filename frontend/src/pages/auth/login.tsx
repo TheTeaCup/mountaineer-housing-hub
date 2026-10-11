@@ -23,7 +23,7 @@ export default function AuthLogin() {
     setError("");
     setPending(true);
     try {
-      window.location.assign(await signInWithGoogle(window.location.origin));
+      window.location.assign(signInWithGoogle());
     } catch {
       setError(
         "Could not start Google sign-in. Please try again or check that the API is running.",

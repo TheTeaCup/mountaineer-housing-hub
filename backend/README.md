@@ -128,6 +128,18 @@ Visit `/auth/login` and sign in with a verified `@appstate.edu` Google account.
 Successful sign-in returns to the home page and shows **Sign out** in navigation.
 The Google callback is handled by the backend; it is not a frontend page.
 
+The frontend starts OAuth by navigating to `/auth/google/start`. This endpoint
+sets Better Auth's state cookie before redirecting to Google's account chooser.
+Keep `BETTER_AUTH_URL` on the same public API origin used by
+`NEXT_PUBLIC_API_URL` so the callback receives that cookie. Host both services
+on the same site so session requests work with the default `SameSite=Lax` cookies.
+For production, use `https://mountaineer-housing-hub.theteacup.dev` as
+`FRONTEND_URL` and `https://api-mtn-housing-hub.theteacup.dev` as
+`BETTER_AUTH_URL` and `NEXT_PUBLIC_API_URL`. Configure the frontend custom domain
+in Cloudflare and add its HTTPS origin to the Google OAuth client's authorized
+JavaScript origins. The Google callback remains on the API domain.
+State-cookie validation remains enabled.
+
 See [Better Auth Google setup](https://better-auth.com/docs/authentication/google).
 
 ## Database design

@@ -28,18 +28,7 @@ async function authRequest<T>(path: string, body?: unknown): Promise<T> {
 export const getSession = () => authRequest<AuthSession | null>("get-session");
 export const signOut = () => authRequest("sign-out", {});
 
-export async function signInWithGoogle(origin: string): Promise<string> {
-  const result = await authRequest<{ url?: string }>("sign-in/social", {
-    provider: "google",
-    callbackURL: `${origin}/`,
-    errorCallbackURL: `${origin}/auth/login?error=google`,
-    disableRedirect: true,
-  });
-  if (!result.url)
-    throw new Error("Google sign-in is unavailable. Please try again.");
-  const url = new URL(result.url);
-  if (url.protocol !== "https:" || url.hostname !== "accounts.google.com") {
-    throw new Error("Google sign-in returned an invalid redirect.");
-  }
-  return url.href;
+export function signInWithGoogle(): string {
+  // A browser navigation lets the API set its OAuth state cookie first-party.
+  return `${API_URL}/auth/google/start`;
 }

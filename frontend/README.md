@@ -10,12 +10,19 @@ Copy `.env.example` to `.env.local` with:
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-Start the backend on port 3001 as well. Google sign-in posts to
-`http://localhost:3001/auth/sign-in/social`, returns through the backend Google
+Start the backend on port 3001 as well. Google sign-in navigates to
+`http://localhost:3001/auth/google/start`, shows Google's account chooser, returns through the backend Google
 callback, and redirects to the frontend home page. Sessions use HTTP-only cookies;
 the frontend includes credentials when checking the session and signing out.
 Only verified App State Google accounts are accepted. See `backend/README.md`
 for Google OAuth client setup.
+
+The navigation lets the backend set its OAuth state cookie in a first-party
+context. Deploy the frontend at `https://mountaineer-housing-hub.theteacup.dev`
+and set the backend's `FRONTEND_URL` to that origin. The existing API at
+`https://api-mtn-housing-hub.theteacup.dev` then shares the same site, allowing
+session cookies on API requests. Use the custom domain to sign in instead of
+the `workers.dev` URL.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 
