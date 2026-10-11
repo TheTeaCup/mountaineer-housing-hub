@@ -11,3 +11,7 @@ SOURCE src / db / schemas / properties.sql;
 SOURCE src / db / schemas / floor_plans.sql;
 
 SOURCE src / db / schemas / reviews.sql;
+
+SOURCE src / db / schemas / favorites.sql;
+
+SOURCE src / db / schemas / submissions.sql;

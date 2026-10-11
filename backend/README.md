@@ -54,7 +54,132 @@ stores temporary state/PKCE information there, and the configured `oneTimeToken`
 plugin also uses it. The table name does not mean users must verify their email
 again. See [Better Auth's state storage documentation](https://better-auth.com/docs/reference/options).
 
+## Local Google sign-in
+
+In your Google Cloud project's OAuth client configuration, use a **Web application**
+client and register this exact authorized redirect URI:
+
+```text
+http://localhost:3001/auth/callback/google
+```
+
+Use `http://localhost:3000` as the authorized JavaScript origin. Configure the OAuth
+consent screen and, if the app is in testing, add the App State accounts that will
+test sign-in. Put the client credentials in the backend's local `.env`:
+
+```dotenv
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+FRONTEND_URL=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:3001
+PORT=3001
+```
+
+Also supply the existing database, Redis, object storage, and Better Auth secret
+settings from `example.env`. Start the backend with `npm run dev`, then start the
+frontend on port 3000. Use the same `localhost` hostname for both services.
+Visit `/auth/login` and sign in with a verified `@appstate.edu` Google account.
+Successful sign-in returns to the home page and shows **Sign out** in navigation.
+The Google callback is handled by the backend; it is not a frontend page.
+
+See [Better Auth Google setup](https://better-auth.com/docs/authentication/google).
+
 ## Database design
+
+### Accounts, favorites, and staff access
+
+### Property and rental agency suggestions
+
+### Public property API
+
+The homepage, directory, search results, property detail pages, and map now read
+published database listings from `GET /properties` and `GET /properties/:slug`.
+The list accepts `q` (property name, agency, address, or description) and `limit`
+(up to 500). The homepage shows the six most recently updated published listings.
+Only published reviews contribute to public ratings.
+
+Add property photos to `property_photos` and floor plans to `floor_plans`.
+Missing photos/prices show honest placeholders. Prices per unit and per bedroom
+are displayed separately. Add latitude and longitude to place a property on the
+map. Draft and archived properties are excluded from public pages, and properties
+with no coordinates remain in the directory but have no map marker.
+
+No schema changes or example records are needed for this API. The old frontend
+demo file remains available to the opt-in development seed script, but public
+pages no longer use it as a fallback. Agency catalog pages are still placeholders.
+
+### Suggestion submission flow
+
+`/submit` is for apartment/property reviews. Missing-property suggestions live
+at `/submit/apartment`, which can suggest either a residential property or a
+rental agency. Properties have a type and residential address, and may link to
+an existing managing agency, propose a new managing agency, or leave it unknown.
+Agency-only suggestions do not require a residential address. Reviews remain
+attached to properties, with the managing agency shown in the property selector.
+
+After migration 001, run `src/db/migrations/002_property_and_agency_submissions.sql`
+once in phpMyAdmin for an existing database. `npm run db:accounts` also applies
+these additions when needed. Fresh bootstraps already include the new fields.
+Migration 002 only changes the schema; it inserts no example agencies or properties.
+
+The staff apartment queue displays the suggestion kind, property type, and
+existing or proposed managing agency. Approval accepts a proposal for catalog
+preparation, preserving the distinction between `agencies` and `properties`;
+it does not automatically publish records. Agency websites and relationships
+must be checked by staff before your team adds records to the catalog.
+
+### Account database setup
+
+For generated usernames and avatar customization, run migration
+`src/db/migrations/003_generated_profiles.sql` once after your existing setup,
+or use `npm run db:accounts` to apply missing additions. It preserves existing
+usernames. New usernames are generated on the server with uniqueness checks and
+a one-minute regeneration cooldown. Custom username text is rejected by the API.
+Avatar style, palette, and shuffle seed are stored in `user_profiles`; neither
+uploaded avatars nor Google profile photos are used. Avatar choices appear in
+the navbar and on published reviews.
+
+For an existing database, run `src/db/migrations/001_accounts_and_staff.sql`
+once in phpMyAdmin's SQL tab. It adds the `role` column and the `favorites` and
+`apartment_submissions` tables. Existing accounts default to `user`. The migration
+includes a separate example statement to grant your already-signed-up account
+the `staff` role. Refresh the frontend after granting staff access.
+
+Alternatively, from the backend directory run `npm run db:accounts`. This checks
+for each addition before applying it and preserves existing tables. Do not run
+`db:setup` on a populated database. To grant staff access from the terminal, use
+`npm run staff:grant -- YOUR_EMAIL@appstate.edu`.
+
+Favorites and reviews reference real database property IDs. If your database is
+empty but the site still shows its three demo listings, optionally run
+`npm run db:accounts -- --seed-demo` to insert only missing demo apartments from
+the frontend catalog. Existing property data and publication status are preserved.
+These are demonstration listings, not newly verified housing data.
+
+Frontend routes:
+
+- `/account`: private saved apartments, authored reviews, username, appearance,
+  and account deletion with typed confirmation.
+- `/staff`: staff landing page linking to each administration section.
+- `/staff/apartments`: pending apartment suggestions.
+- `/staff/reviews`: pending apartment reviews.
+- `/staff/submissions`: legacy link redirecting to `/staff/reviews`.
+- `/staff/users`: registered accounts, 25 per page; excludes passwords and tokens.
+
+Review submissions start pending. Staff approval publishes them in the property's
+student review section. Author edits return them to pending. Apartment suggestion
+approval accepts the suggestion for catalog preparation; it does not automatically
+create or publish a property. The public listing catalog still uses the frontend
+data file. Photo uploads are not enabled.
+
+Every account API request derives ownership from the session. Staff APIs check
+the user's active status and database role on every request. Mutations require
+the configured frontend Origin. Users cannot assign themselves staff access.
+Account deletion cascades to favorites, reviews, sessions, and linked auth accounts;
+apartment suggestions are retained with their user association removed.
+
+Run authorization tests with `node --import tsx --test tests/accounts.test.mjs
+tests/auth-policy.test.mjs`.
 
 ```mermaid
 erDiagram

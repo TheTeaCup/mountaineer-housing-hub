@@ -18,7 +18,7 @@ export const auth = betterAuth({
 
   baseURL: config.BETTER_AUTH_URL,
 
-  basePath: "/better",
+  basePath: "/auth",
 
   plugins: [
     bearer(),
@@ -37,15 +37,15 @@ export const auth = betterAuth({
       hd: "appstate.edu",
       clientId: config.GOOGLE_CLIENT_ID,
       clientSecret: config.GOOGLE_CLIENT_SECRET,
-      redirectURI: new URL("/auth/callback/google", config.FRONTEND_URL).href,
+      mapProfileToUser: () => ({ image: undefined }),
+      redirectURI: new URL("/auth/callback/google", config.BETTER_AUTH_URL)
+        .href,
     },
   },
 
   databaseHooks: {
     user: {
-      create: {
-     
-      },
+      create: {},
     },
 
     session: {

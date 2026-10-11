@@ -5,11 +5,17 @@ import { ThemeProvider, useTheme } from "next-themes";
 import * as React from "react";
 import { LuMoon, LuSun } from "react-icons/lu";
 
-export interface ColorModeProviderProps extends ThemeProviderProps {}
+export type ColorModeProviderProps = ThemeProviderProps;
 
 export function ColorModeProvider(props: ColorModeProviderProps) {
   return (
-    <ThemeProvider attribute="class" disableTransitionOnChange {...props} />
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      {...props}
+    />
   );
 }
 
@@ -23,7 +29,7 @@ export interface UseColorModeReturn {
 
 export function useColorMode(): UseColorModeReturn {
   const { resolvedTheme, setTheme, forcedTheme } = useTheme();
-  const colorMode = forcedTheme || resolvedTheme;
+  const colorMode = forcedTheme || resolvedTheme || "light";
   const toggleColorMode = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
@@ -44,19 +50,24 @@ export function ColorModeIcon() {
   return colorMode === "dark" ? <LuMoon /> : <LuSun />;
 }
 
-interface ColorModeButtonProps extends Omit<IconButtonProps, "aria-label"> {}
+type ColorModeButtonProps = Omit<IconButtonProps, "aria-label">;
 
 export const ColorModeButton = React.forwardRef<
   HTMLButtonElement,
   ColorModeButtonProps
 >(function ColorModeButton(props, ref) {
-  const { toggleColorMode } = useColorMode();
+  const { colorMode, toggleColorMode } = useColorMode();
   return (
     <ClientOnly fallback={<Skeleton boxSize="9" />}>
       <IconButton
         onClick={toggleColorMode}
         variant="ghost"
-        aria-label="Toggle color mode"
+        aria-label={
+          colorMode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+        }
+        title={
+          colorMode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+        }
         size="sm"
         ref={ref}
         {...props}

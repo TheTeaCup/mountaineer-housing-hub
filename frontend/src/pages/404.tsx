@@ -7,20 +7,17 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
-import NavBar from "../components/navigation/navbar";
 
 export default function NotFound() {
   return (
     <Box
-      minH="100vh"
-      bg="#f8f9fa"
-      color="#333"
+      flex="1"
+      bg="var(--site-bg)"
+      color="var(--site-fg)"
       fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
       display="flex"
       flexDirection="column"
     >
-      <NavBar />
-
       <Container
         flex="1"
         display="flex"
@@ -35,7 +32,7 @@ export default function NotFound() {
             fontSize={{ base: "5rem", md: "7rem" }}
             lineHeight="1"
             fontWeight="bold"
-            color="#111111"
+            color="var(--site-heading)"
           >
             404
           </Heading>
@@ -45,13 +42,13 @@ export default function NotFound() {
           <Heading
             as="h1"
             fontSize={{ base: "1.5rem", md: "2rem" }}
-            color="#111111"
+            color="var(--site-heading)"
           >
             We couldn't find that page
           </Heading>
 
           <Text
-            color="#666"
+            color="var(--site-muted)"
             fontSize={{ base: "1rem", md: "1.1rem" }}
             maxW="500px"
           >

@@ -7,6 +7,7 @@ CREATE TABLE users (
   email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   auth_image TEXT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'active',
+  role ENUM ('user', 'staff') NOT NULL DEFAULT 'user',
   last_login TIMESTAMP(3) NULL,
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
@@ -16,6 +17,10 @@ CREATE TABLE users (
 CREATE TABLE user_profiles (
   user_id INT NOT NULL PRIMARY KEY,
   username VARCHAR(100) NOT NULL UNIQUE,
+  username_changed_at TIMESTAMP(3) NULL,
+  avatar_variant ENUM ('beam', 'marble', 'bauhaus', 'ring') NOT NULL DEFAULT 'beam',
+  avatar_palette ENUM ('gold', 'forest', 'ocean') NOT NULL DEFAULT 'gold',
+  avatar_seed VARCHAR(36) NULL,
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   CONSTRAINT fk_profile_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,

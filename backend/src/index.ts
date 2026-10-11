@@ -1,12 +1,19 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 
 import indexRouter from "./routes/index.js";
 import { auth } from "./auth/index.js";
 import { config } from "./config.js";
 import redis from "./db/redis.js";
-import { toNodeHandler } from "better-auth/node";
+import { createAccountRouter } from "./routes/account.js";
+import { createStaffRouter } from "./routes/staff.js";
+import { query } from "./db/query.js";
+import { execute } from "./db/execute.js";
+import { ensureAuthProfile } from "./auth/ensureProfile.js";
+import { generateUniqueUsername } from "./utils/generateUsername.js";
+import { isVerifiedAppStateUser } from "./auth/policy.js";
 import { verifiedProxyClientIp } from "./utils/proxyClientIp.js";
 import { db } from "./db/connections.js";
 
@@ -63,6 +70,28 @@ async function startServer() {
 
   // Parse JSON for all other routes
   app.use(bodyParser.json());
+  const accountDependencies = {
+    frontendOrigin: new URL(config.FRONTEND_URL).origin,
+    getUser: async (headers: Record<string, unknown>) => {
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(
+          headers as Parameters<typeof fromNodeHeaders>[0],
+        ),
+      });
+      if (!session || !isVerifiedAppStateUser(session.user)) return undefined;
+      const users = await query<{ status: string }>(
+        "SELECT status FROM users WHERE id = ?",
+        [session.user.id],
+      );
+      return users[0]?.status === "active" ? session.user.id : undefined;
+    },
+    query,
+    execute,
+    ensureProfile: ensureAuthProfile,
+    generateUsername: generateUniqueUsername,
+  };
+  app.use("/account", createAccountRouter(accountDependencies));
+  app.use("/staff", createStaffRouter(accountDependencies));
 
   // REST
   app.use("/", indexRouter);

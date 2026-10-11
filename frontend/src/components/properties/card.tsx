@@ -1,83 +1,76 @@
-import { Property } from "@/data/properties";
-import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
+import type { Property } from "@/types/properties";
+import { propertyTypeLabel, rentSummary } from "@/utils/api/properties";
+import { Box, Button, Heading, Stack, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
+import FavoriteButton from "./favorite-button";
+import PropertyPhoto from "./photo";
 
-interface PropertiesCardProps {
-  property: Property;
-}
-
-export default function PropertiesCard({ property }: PropertiesCardProps) {
+export default function PropertiesCard({ property }: { property: Property }) {
+  const prices = rentSummary(property.floor_plans);
   return (
-    <>
-      <Box
-        key={property.name}
-        bg="white"
-        borderRadius="8px"
-        overflow="hidden"
-        boxShadow="0 2px 8px rgba(0,0,0,0.1)"
-        transition="transform 0.2s"
-        _hover={{
-          transform: "translateY(-5px)",
-        }}
-      >
-        {/* Property Image */}
-        <Box
-          h="200px"
-          bgImage={`url('${property.image}')`}
-          bgSize="cover"
-          position="center"
-          bgColor="#ccc"
-        />
-
-        {/* Property Content */}
-        <Box p={6}>
-          <Heading as="h3" fontSize="1.25rem" color="#111111" mb={2}>
-            {property.name}
-          </Heading>
-
-          <Text color="#27ae60" fontWeight="bold" fontSize="1.1rem" mb={4}>
-            From {property.price} / mo
-          </Text>
-
-          <Text fontSize="0.9rem" color="#666" mb={4}>
-            {property.details}
-          </Text>
-
-          {/* Badges */}
-          <Flex wrap="wrap" gap={2}>
-            {property.badges.map((badge) => (
-              <Box
-                key={badge}
-                bg="#e2e8f0"
-                px={2}
-                py={1}
-                borderRadius="4px"
-                fontSize="0.8rem"
-              >
-                {badge}
-              </Box>
-            ))}
-          </Flex>
-
-          {/* Details Button */}
-          <NextLink href={`/properties/${property.slug}`}>
+    <Box
+      position="relative"
+      bg="var(--site-surface)"
+      borderRadius="8px"
+      overflow="hidden"
+      boxShadow="0 2px 8px rgba(0,0,0,0.1)"
+      display="flex"
+      flexDirection="column"
+      transition="transform 0.2s"
+      _hover={{ transform: "translateY(-3px)" }}
+    >
+      <Box position="absolute" top={2} right={2} zIndex={1}>
+        <FavoriteButton slug={property.slug} iconOnly onImage />
+      </Box>
+      <PropertyPhoto
+        key={property.photos[0]?.image_url || property.slug}
+        src={property.photos[0]?.image_url}
+        alt={property.photos[0]?.alt_text || `${property.name} exterior`}
+      />
+      <Stack p={6} gap={3} flex="1">
+        <Heading as="h3" fontSize="1.25rem" color="var(--site-heading)">
+          {property.name}
+        </Heading>
+        {prices.length ? (
+          prices.map((price) => (
+            <Text key={price} color="var(--site-success)" fontWeight="bold">
+              {price}
+            </Text>
+          ))
+        ) : (
+          <Text color="var(--site-muted)">Contact property for pricing</Text>
+        )}
+        <Text
+          fontSize="sm"
+          color="var(--site-muted)"
+          textTransform="capitalize"
+        >
+          {propertyTypeLabel(property.property_type)}
+        </Text>
+        <Text fontSize="sm" color="var(--site-muted)">
+          {property.address}
+        </Text>
+        {property.agency && (
+          <Text fontSize="sm">Managed by {property.agency.name}</Text>
+        )}
+        <Text fontSize="sm" color="var(--site-muted)">
+          {property.review_count && property.average_rating !== null
+            ? `${property.average_rating.toFixed(1)}/5 · ${property.review_count} published ${property.review_count === 1 ? "review" : "reviews"}`
+            : "No published reviews yet"}
+        </Text>
+        <Box mt="auto" pt={2}>
+          <NextLink href={`/properties/${encodeURIComponent(property.slug)}`}>
             <Button
-              display="block"
               w="100%"
-              mt={4}
               bg="#111111"
               color="white"
-              borderRadius="4px"
-              fontWeight="bold"
-              _hover={{
-                background: "#333333",
-              }}
+              _hover={{ bg: "#333333" }}
             >
-              View Full Profile
+              View full profile
             </Button>
           </NextLink>
         </Box>
-      </Box>
-    </>
+      </Stack>
+    </Box>
   );
 }

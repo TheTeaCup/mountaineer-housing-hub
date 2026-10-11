@@ -5,10 +5,17 @@ You will need a file named `.dev.vars` with the following information:
 NEXTJS_ENV=development
 ```
 
-And `.env` with:
+Copy `.env.example` to `.env.local` with:
 ```
-TBD
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
+
+Start the backend on port 3001 as well. Google sign-in posts to
+`http://localhost:3001/auth/sign-in/social`, returns through the backend Google
+callback, and redirects to the frontend home page. Sessions use HTTP-only cookies;
+the frontend includes credentials when checking the session and signing out.
+Only verified App State Google accounts are accepted. See `backend/README.md`
+for Google OAuth client setup.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 

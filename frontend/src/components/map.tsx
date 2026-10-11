@@ -1,64 +1,15 @@
+import { useColorMode } from "@/components/ui/color-mode";
+import { useProperties } from "@/hooks/use-properties";
+import { mapLocations } from "@/utils/api/properties";
 import { registerPMTiles } from "@/utils/pmtiles";
-import { Box } from "@chakra-ui/react";
+import { Box, Button, Text } from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import protomaps from "protomaps-themes-base";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const properties = [
-  {
-    id: "university-highlands",
-    name: "University Highlands",
-    slug: "university-highlands",
-    coordinates: [-81.7033474, 36.2089686],
-  },
-  {
-    id: "the-standard-at-boone",
-    name: "The Standard at Boone",
-    slug: "the-standard-at-boone",
-    coordinates: [-81.6719444, 36.20725],
-  },
-  {
-    id: "the-finmore",
-    name: "The Finmore at 241",
-    slug: "the-finmore",
-    coordinates: [-81.6615367, 36.2034991],
-  },
-];
-
-const houseIcon = `
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="48"
-  height="48"
-  viewBox="0 0 48 48"
->
-  <path
-    d="M6 23L24 7L42 23"
-    fill="none"
-    stroke="#111111"
-    stroke-width="4"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-
-  <path
-    d="M10 21V41H38V21"
-    fill="#ffc72c"
-    stroke="#111111"
-    stroke-width="4"
-    stroke-linejoin="round"
-  />
-
-  <path
-    d="M19 41V29H29V41"
-    fill="white"
-    stroke="#111111"
-    stroke-width="3"
-  />
-</svg>
-`;
+const houseIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path d="M6 23L24 7L42 23" fill="none" stroke="#111111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21V41H38V21" fill="#ffc72c" stroke="#111111" stroke-width="4" stroke-linejoin="round"/><path d="M19 41V29H29V41" fill="white" stroke="#111111" stroke-width="3"/></svg>`;
 
 export default function MapComponent({
   propertyQuery,
@@ -66,51 +17,61 @@ export default function MapComponent({
   propertyQuery?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<{ center: [number, number]; zoom: number } | null>(
+    null,
+  );
   const router = useRouter();
-
+  const { colorMode } = useColorMode();
+  const { properties, loading, error, retry } = useProperties("", 500);
+  const [mapError, setMapError] = useState("");
+  const mapped = useMemo(() => mapLocations(properties), [properties]);
+  const focused = mapped.find((property) => property.slug === propertyQuery);
   useEffect(() => {
     registerPMTiles();
-
     if (!containerRef.current) return;
-
+    let disposed = false;
+    let iconUrl: string | undefined;
+    let iconImage: HTMLImageElement | undefined;
     const map = new maplibregl.Map({
       container: containerRef.current,
-
-      // Boone, NC
-      center: [-81.6746, 36.2168],
-
-      zoom: 13,
-
+      center: focused
+        ? [focused.longitude!, focused.latitude!]
+        : viewRef.current?.center || [-81.6746, 36.2168],
+      zoom: focused ? 15 : (viewRef.current?.zoom ?? 13),
       style: {
         version: 8,
-
         sources: {
           protomaps: {
             type: "vector",
             url: "pmtiles://https://assets.parkwayoverlooks.com/map/boone.pmtiles",
           },
         },
-
         glyphs:
           "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-
-        sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
-
-        layers: protomaps("protomaps", "light", "en"),
+        sprite: `https://protomaps.github.io/basemaps-assets/sprites/v4/${colorMode}`,
+        layers: protomaps(
+          "protomaps",
+          colorMode === "dark" ? "dark" : "light",
+          "en",
+        ),
       },
     });
-
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.on("error", () => {
+      if (!disposed)
+        setMapError(
+          "Some map tiles could not load. Property locations may still be visible.",
+        );
+    });
     map.on("load", () => {
-      /*
-       * Convert properties into GeoJSON
-       */
-      const propertyGeoJSON: GeoJSON.FeatureCollection = {
+      if (disposed) return;
+      const data: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
-        features: properties.map((property) => ({
+        features: mapped.map((property) => ({
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: property.coordinates,
+            coordinates: [property.longitude!, property.latitude!],
           },
           properties: {
             id: property.id,
@@ -119,43 +80,29 @@ export default function MapComponent({
           },
         })),
       };
-
-      /*
-       * Add property source
-       */
-      map.addSource("properties", {
-        type: "geojson",
-        data: propertyGeoJSON,
-      });
-
-      /*
-       * Add house icon
-       */
-      const svg = new Blob([houseIcon], {
-        type: "image/svg+xml",
-      });
-
-      const iconUrl = URL.createObjectURL(svg);
-      const image = new Image();
-
-      image.onload = () => {
-        /*
-         * Register the house icon
-         */
-        if (!map.hasImage("house")) {
-          map.addImage("house", image);
+      map.addSource("properties", { type: "geojson", data });
+      if (!focused && mapped.length && !viewRef.current) {
+        const bounds = new maplibregl.LngLatBounds();
+        mapped.forEach((property) =>
+          bounds.extend([property.longitude!, property.latitude!]),
+        );
+        map.fitBounds(bounds, { padding: 65, maxZoom: 14, duration: 0 });
+      }
+      iconUrl = URL.createObjectURL(
+        new Blob([houseIcon], { type: "image/svg+xml" }),
+      );
+      iconImage = new Image();
+      iconImage.onload = () => {
+        if (iconUrl) {
+          URL.revokeObjectURL(iconUrl);
+          iconUrl = undefined;
         }
-
-        URL.revokeObjectURL(iconUrl);
-
-        /*
-         * House markers
-         */
+        if (disposed || !iconImage) return;
+        map.addImage("house", iconImage);
         map.addLayer({
           id: "property-icons",
           type: "symbol",
           source: "properties",
-
           layout: {
             "icon-image": "house",
             "icon-size": 0.55,
@@ -163,82 +110,99 @@ export default function MapComponent({
             "icon-allow-overlap": true,
           },
         });
-
-        /*
-         * Property names
-         */
         map.addLayer({
           id: "property-labels",
           type: "symbol",
           source: "properties",
-
           layout: {
             "text-field": ["get", "name"],
             "text-size": 13,
             "text-anchor": "left",
             "text-offset": [1.5, 0],
-            "text-allow-overlap": false,
           },
-
           paint: {
-            "text-color": "#111111",
-            "text-halo-color": "#ffffff",
+            "text-color": colorMode === "dark" ? "#f9fafb" : "#111111",
+            "text-halo-color": colorMode === "dark" ? "#121416" : "#ffffff",
             "text-halo-width": 2,
           },
         });
-
-        /*
-         * Property click handler
-         */
-        const handlePropertyClick = (
+        const openProperty = (
           event: maplibregl.MapMouseEvent & {
             features?: maplibregl.MapGeoJSONFeature[];
           },
         ) => {
-          const feature = event.features?.[0];
-
-          if (!feature) return;
-
-          const slug = feature.properties?.slug;
-
-          if (!slug) return;
-
-          router.push(`/properties/${slug}`);
+          const slug = event.features?.[0]?.properties?.slug;
+          if (typeof slug === "string")
+            void router.push(`/properties/${encodeURIComponent(slug)}`);
         };
-
-        map.on("click", "property-icons", handlePropertyClick);
-        map.on("click", "property-labels", handlePropertyClick);
-
-        /*
-         * Change cursor when hovering over house
-         */
-        map.on("mouseenter", "property-icons", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-
-        map.on("mouseleave", "property-icons", () => {
-          map.getCanvas().style.cursor = "";
-        });
-
-        /*
-         * Change cursor when hovering over name
-         */
-        map.on("mouseenter", "property-labels", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-
-        map.on("mouseleave", "property-labels", () => {
-          map.getCanvas().style.cursor = "";
-        });
+        for (const layer of ["property-icons", "property-labels"]) {
+          map.on("click", layer, openProperty);
+          map.on("mouseenter", layer, () => {
+            map.getCanvas().style.cursor = "pointer";
+          });
+          map.on("mouseleave", layer, () => {
+            map.getCanvas().style.cursor = "";
+          });
+        }
       };
-
-      image.src = iconUrl;
+      iconImage.src = iconUrl;
     });
-
     return () => {
+      disposed = true;
+      if (iconImage) iconImage.onload = null;
+      if (iconUrl) URL.revokeObjectURL(iconUrl);
+      // Preserve user navigation when changing theme or refreshing property data.
+      if (mapped.length) {
+        const center = map.getCenter();
+        viewRef.current = {
+          center: [center.lng, center.lat],
+          zoom: map.getZoom(),
+        };
+      }
       map.remove();
     };
-  }, [router]);
-
-  return <Box ref={containerRef} w="100%" h="100%" />;
+  }, [router, colorMode, mapped, focused]);
+  return (
+    <Box position="relative" w="100%" h="100%">
+      <Box ref={containerRef} w="100%" h="100%" />
+      <Box
+        position="absolute"
+        top={4}
+        left={4}
+        maxW="min(340px, calc(100% - 80px))"
+        bg="var(--site-surface)"
+        color="var(--site-fg)"
+        borderRadius="lg"
+        p={4}
+        boxShadow="md"
+      >
+        {loading ? (
+          <Text role="status">Loading property locations…</Text>
+        ) : error ? (
+          <Box role="alert">
+            <Text>{error}</Text>
+            <Button size="sm" mt={2} onClick={retry}>
+              Try again
+            </Button>
+          </Box>
+        ) : (
+          <Text role="status">
+            {mapped.length
+              ? `${mapped.length} ${mapped.length === 1 ? "property" : "properties"} on the map. Select a house to view details.`
+              : "No published properties have map coordinates yet."}
+          </Text>
+        )}
+        {propertyQuery && !loading && !error && !focused && (
+          <Text mt={2} fontSize="sm">
+            This property does not have a published map location.
+          </Text>
+        )}
+        {mapError && (
+          <Text mt={2} fontSize="sm">
+            {mapError}
+          </Text>
+        )}
+      </Box>
+    </Box>
+  );
 }

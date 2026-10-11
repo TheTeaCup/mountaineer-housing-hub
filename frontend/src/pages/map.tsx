@@ -2,7 +2,6 @@ import SEO from "@/components/seo";
 import { Box } from "@chakra-ui/react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
-import NavBar from "../components/navigation/navbar";
 
 const MapComponent = dynamic(() => import("@/components/map"), {
   ssr: false,
@@ -20,16 +19,15 @@ export default function Map() {
     <>
       <SEO title="Map" />
       <Box
-        h="100vh"
+        flex="1"
+        minH="0"
         overflow="hidden"
-        bg="#f8f9fa"
-        color="#333"
+        bg="var(--site-bg)"
+        color="var(--site-fg)"
         fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
         display="flex"
         flexDirection="column"
       >
-        <NavBar />
-
         <Box position="relative" flex="1" minH="0" w="100%">
           <MapComponent propertyQuery={propertyQuery} />
         </Box>

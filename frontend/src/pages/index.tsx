@@ -1,7 +1,6 @@
-import Footer from "@/components/navigation/footer";
 import PropertiesCard from "@/components/properties/card";
-import { properties } from "@/data/properties";
 import SEO from "@/components/seo";
+import { useProperties } from "@/hooks/use-properties";
 import {
   Box,
   Button,
@@ -13,14 +12,14 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { useRouter } from "next/navigation";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import NavBar from "../components/navigation/navbar";
 
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const { properties, loading, error, retry } = useProperties("", 6);
 
   const handleSearch = () => {
     const query = searchQuery.trim();
@@ -37,13 +36,11 @@ export default function Home() {
     <>
       <SEO />
       <Box
-        minH="100vh"
-        bg="#f8f9fa"
-        color="#333"
+        flex="1"
+        bg="var(--site-bg)"
+        color="var(--site-fg)"
         fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
       >
-        <NavBar />
-
         {/* Hero */}
         <Box
           as="section"
@@ -77,7 +74,7 @@ export default function Home() {
                   e.preventDefault();
                   handleSearch();
                 }}
-                bg="white"
+                bg="var(--site-surface)"
                 p="10px"
                 borderRadius="8px"
                 maxW="700px"
@@ -89,13 +86,13 @@ export default function Home() {
                 <Input
                   flex="1"
                   border="none"
-                  color="#333"
+                  color="var(--site-fg)"
                   fontSize="1rem"
                   px={3}
                   _focus={{
                     boxShadow: "none",
                   }}
-                  placeholder="Search by name, price, or 'pet friendly, near bus stop'..."
+                  placeholder="Search by property name, rental agency, or address…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -125,34 +122,45 @@ export default function Home() {
               as="h2"
               display="inline-block"
               fontSize={{ base: "1.5rem", md: "1.8rem" }}
-              color="#111111"
+              color="var(--site-heading)"
               pb={1}
               borderBottom="2px solid"
               borderColor="#ffc72c"
             >
-              Featured Student Properties
+              Explore Student Properties
             </Heading>
 
             <NextLink href="/properties" style={{ textDecoration: "none" }}>
               <Text
-                color="#725600"
+                color="var(--site-accent-fg)"
                 fontWeight="700"
                 whiteSpace="nowrap"
-                _hover={{ color: "#111111" }}
+                _hover={{ color: "var(--site-heading)" }}
               >
                 View all properties
               </Text>
             </NextLink>
           </Flex>
 
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
-            {properties.map((property) => (
-              <PropertiesCard key={property.slug} property={property} />
-            ))}
-          </SimpleGrid>
+          {loading ? (
+            <Text role="status">Loading properties…</Text>
+          ) : error ? (
+            <Box role="alert">
+              <Text mb={3}>{error}</Text>
+              <Button variant="outline" onClick={retry}>
+                Try again
+              </Button>
+            </Box>
+          ) : !properties.length ? (
+            <Text>No properties have been published yet. Check back soon.</Text>
+          ) : (
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
+              {properties.map((property) => (
+                <PropertiesCard key={property.slug} property={property} />
+              ))}
+            </SimpleGrid>
+          )}
         </Container>
-
-        <Footer />
       </Box>
     </>
   );

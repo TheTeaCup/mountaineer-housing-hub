@@ -1,238 +1,200 @@
+import { useAuth } from "@/components/ui/auth-provider";
+import { accountRequest } from "@/utils/api/account";
 import {
   Box,
   Button,
   Field,
   Heading,
-  HStack,
   Input,
   NativeSelect,
   Stack,
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import NextLink from "next/link";
+import { useEffect, useState } from "react";
 
-interface ReviewFormProps {
-  onSubmitApartment: () => void;
-}
-
-export default function ReviewForm({ onSubmitApartment }: ReviewFormProps) {
-  const [photos, setPhotos] = useState<File[]>([]);
-
-  const MAX_PHOTOS = 10;
-
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-
-    const selectedFiles = Array.from(event.target.files);
-
-    setPhotos((current) => [...current, ...selectedFiles].slice(0, MAX_PHOTOS));
-  };
-
-  const removePhoto = (index: number) => {
-    setPhotos((current) =>
-      current.filter((_, photoIndex) => photoIndex !== index),
+export default function ReviewForm() {
+  const { session, loading } = useAuth();
+  const [properties, setProperties] = useState<
+    { slug: string; name: string; agency_name?: string | null }[]
+  >([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    accountRequest<
+      { slug: string; name: string; agency_name?: string | null }[]
+    >("/account/properties")
+      .then((data) => {
+        if (active) setProperties(data);
+      })
+      .catch((err: Error) => {
+        if (active) setError(err.message);
+      })
+      .finally(() => {
+        if (active) setPropertiesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session]);
+  if (loading) return <Text>Loading…</Text>;
+  if (!session)
+    return (
+      <Text>
+        <NextLink href="/auth/login">
+          Sign in with your App State account
+        </NextLink>{" "}
+        to submit a review or suggest an apartment.
+      </Text>
     );
-  };
-
   return (
     <>
-      <Heading color="#111111" mb={2}>
+      <Heading as="h1" mb={3}>
         Submit an Apartment Review
       </Heading>
-
-      <Text color="gray.600" mb={8}>
-        Share your experience to help other students find the right place to
-        live in Boone.
+      <Text mb={6}>
+        Review the building or community where you lived. You can discuss its
+        management in the review, but choose the property rather than a rental
+        company. Reviews are checked by staff before publication.
       </Text>
-
-      <Stack gap={6}>
-        {/* Apartment */}
-        <Field.Root>
-          <Field.Label>
-            Apartment <Field.RequiredIndicator />
-          </Field.Label>
-
-          <NativeSelect.Root>
-            <NativeSelect.Field placeholder="Select your apartment">
-              <option value="university-highlands">University Highlands</option>
-
-              <option value="the-standard-at-boone">
-                The Standard at Boone
-              </option>
-
-              <option value="cp-west-apartments">CP West Apartments</option>
-            </NativeSelect.Field>
-
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-
-          <Text fontSize="sm" color="gray.600" mt={2}>
-            Don't see your apartment?{" "}
-            <Button
-              variant="plain"
-              size="sm"
-              color="#111111"
-              fontWeight="600"
-              textDecoration="underline"
-              textUnderlineOffset="2px"
-              p={0}
-              h="auto"
-              onClick={onSubmitApartment}
-            >
-              Submit it here.
+      {error && (
+        <Text role="alert" color="fg.error" mb={3}>
+          {error}
+        </Text>
+      )}
+      {notice && (
+        <Text role="status" mb={3}>
+          {notice} <NextLink href="/account">View My Account</NextLink>.
+        </Text>
+      )}
+      <Box
+        as="form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget as unknown as HTMLFormElement;
+          const data = new FormData(form);
+          setPending(true);
+          setError("");
+          setNotice("");
+          try {
+            await accountRequest("/account/reviews", "POST", {
+              slug: data.get("slug"),
+              rating: Number(data.get("rating")),
+              body: data.get("body"),
+              pros: data.get("pros"),
+              cons: data.get("cons"),
+              recommendation: data.get("recommendation") || null,
+            });
+            setNotice("Review submitted for approval.");
+            form.reset();
+          } catch (err) {
+            setError((err as Error).message);
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        <Stack gap={5}>
+          <Field.Root required>
+            <Field.Label>
+              Apartment <Field.RequiredIndicator />
+            </Field.Label>
+            <NativeSelect.Root disabled={propertiesLoading}>
+              <NativeSelect.Field name="slug" placeholder="Select an apartment">
+                {properties.map((property) => (
+                  <option key={property.slug} value={property.slug}>
+                    {property.name}
+                    {property.agency_name
+                      ? ` — managed by ${property.agency_name}`
+                      : ""}
+                  </option>
+                ))}
+              </NativeSelect.Field>
+              <NativeSelect.Indicator color="var(--site-muted)" />
+            </NativeSelect.Root>
+            {propertiesLoading ? (
+              <Text>Loading apartments…</Text>
+            ) : (
+              !properties.length && (
+                <Text>No apartments are available for reviews yet.</Text>
+              )
+            )}
+          </Field.Root>
+          <NextLink href="/submit/apartment">
+            <Button variant="outline">
+              Apartment missing? Suggest a property or agency
             </Button>
-          </Text>
-        </Field.Root>
-
-        {/* Rating */}
-        <Field.Root>
-          <Field.Label>
-            Overall Rating <Field.RequiredIndicator />
-          </Field.Label>
-
-          <NativeSelect.Root>
-            <NativeSelect.Field placeholder="Select a rating">
-              <option value="5">★★★★★ — 5/5</option>
-              <option value="4">★★★★☆ — 4/5</option>
-              <option value="3">★★★☆☆ — 3/5</option>
-              <option value="2">★★☆☆☆ — 2/5</option>
-              <option value="1">★☆☆☆☆ — 1/5</option>
-            </NativeSelect.Field>
-
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-        </Field.Root>
-
-        {/* Review */}
-        <Field.Root>
-          <Field.Label>
-            Your Review <Field.RequiredIndicator />
-          </Field.Label>
-
-          <Textarea
-            placeholder="Tell us about your experience living here..."
-            rows={7}
-          />
-
-          <Field.HelperText>
-            Share details about the apartment, management, maintenance,
-            amenities, noise, location, or anything else you think other
-            students should know.
-          </Field.HelperText>
-        </Field.Root>
-
-        {/* Pros */}
-        <Field.Root>
-          <Field.Label>What did you like?</Field.Label>
-
-          <Input placeholder="e.g. Great location, quiet, friendly management..." />
-        </Field.Root>
-
-        {/* Cons */}
-        <Field.Root>
-          <Field.Label>What could be improved?</Field.Label>
-
-          <Input placeholder="e.g. Parking, noise, maintenance response time..." />
-        </Field.Root>
-
-        {/* Photos */}
-        <Field.Root>
-          <Field.Label>Photos</Field.Label>
-
-          <Text fontSize="sm" color="gray.600" mb={2}>
-            Add photos to help other students see what the apartment is really
-            like.
-          </Text>
-
-          <Box
-            border="2px dashed"
-            borderColor="gray.300"
-            borderRadius="md"
-            p={8}
-            textAlign="center"
-            cursor="pointer"
-            _hover={{
-              borderColor: "#ffc72c",
-              bg: "gray.50",
-            }}
-            onClick={() => document.getElementById("review-photos")?.click()}
-          >
-            <Text fontWeight="600" color="#111111">
-              Click to upload photos
-            </Text>
-
-            <Text fontSize="sm" color="gray.500" mt={1}>
-              JPG, PNG, or HEIC
-            </Text>
-
-            <Input
-              id="review-photos"
-              type="file"
-              accept="image/jpeg,image/png,image/heic,image/heif"
-              multiple
-              display="none"
-              onChange={handlePhotoUpload}
+          </NextLink>
+          <Field.Root required>
+            <Field.Label>
+              Overall rating <Field.RequiredIndicator />
+            </Field.Label>
+            <NativeSelect.Root>
+              <NativeSelect.Field name="rating" placeholder="Select a rating">
+                {[5, 4, 3, 2, 1].map((value) => (
+                  <option key={value} value={value}>
+                    {value}/5
+                  </option>
+                ))}
+              </NativeSelect.Field>
+              <NativeSelect.Indicator color="var(--site-muted)" />
+            </NativeSelect.Root>
+          </Field.Root>
+          <Field.Root required>
+            <Field.Label>
+              Your review <Field.RequiredIndicator />
+            </Field.Label>
+            <Textarea
+              name="body"
+              required
+              maxLength={10000}
+              rows={7}
+              placeholder="Tell us about your experience living here…"
             />
-          </Box>
-
-          {/* Selected photos */}
-          {photos.length > 0 && (
-            <Stack gap={2} mt={3}>
-              {photos.map((photo, index) => (
-                <HStack
-                  key={`${photo.name}-${index}`}
-                  justify="space-between"
-                  bg="gray.100"
-                  p={3}
-                  borderRadius="md"
-                >
-                  <Text fontSize="sm" truncate>
-                    {photo.name}
-                  </Text>
-
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    colorPalette="red"
-                    onClick={() => removePhoto(index)}
-                  >
-                    Remove
-                  </Button>
-                </HStack>
-              ))}
-            </Stack>
-          )}
-        </Field.Root>
-
-        {/* Recommendation */}
-        <Field.Root>
-          <Field.Label>Would you recommend this apartment?</Field.Label>
-
-          <NativeSelect.Root>
-            <NativeSelect.Field placeholder="Select an option">
-              <option value="yes">Yes</option>
-              <option value="maybe">Maybe</option>
-              <option value="no">No</option>
-            </NativeSelect.Field>
-
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-        </Field.Root>
-
-        {/* Submit */}
-        <Button
-          bg="#ffc72c"
-          color="#111111"
-          fontWeight="bold"
-          _hover={{
-            bg: "#d9a714",
-          }}
-          alignSelf="flex-start"
-        >
-          Submit Review
-        </Button>
-      </Stack>
+          </Field.Root>
+          <Field.Root>
+            <Field.Label>What did you like?</Field.Label>
+            <Input name="pros" maxLength={2000} />
+          </Field.Root>
+          <Field.Root>
+            <Field.Label>What could be improved?</Field.Label>
+            <Input name="cons" maxLength={2000} />
+          </Field.Root>
+          <Field.Root>
+            <Field.Label>Would you recommend this apartment?</Field.Label>
+            <NativeSelect.Root>
+              <NativeSelect.Field
+                name="recommendation"
+                placeholder="Select an option"
+              >
+                <option value="yes">Yes</option>
+                <option value="maybe">Maybe</option>
+                <option value="no">No</option>
+              </NativeSelect.Field>
+              <NativeSelect.Indicator color="var(--site-muted)" />
+            </NativeSelect.Root>
+          </Field.Root>
+          <Text fontSize="sm" color="var(--site-muted)">
+            Photo uploads are not available yet. Submit text only for now. Do
+            not include private contact details or other sensitive information.
+          </Text>
+          <Button
+            type="submit"
+            loading={pending}
+            disabled={propertiesLoading || !properties.length}
+            bg="#ffc72c"
+            color="#111111"
+            alignSelf="flex-start"
+          >
+            Submit review
+          </Button>
+        </Stack>
+      </Box>
     </>
   );
 }

@@ -6,6 +6,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "db:accounts": "node src/scripts/setupAccounts.mjs",
+    "staff:grant": "node src/scripts/grantStaff.mjs",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p .",

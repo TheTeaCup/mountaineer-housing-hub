@@ -1,363 +1,212 @@
+import FavoriteButton from "@/components/properties/favorite-button";
+import PropertyPhoto from "@/components/properties/photo";
+import PropertyReviews from "@/components/properties/reviews";
 import SEO from "@/components/seo";
-import { properties } from "@/data/properties";
+import type { Property } from "@/types/properties";
 import {
-  Badge,
+  fetchProperty,
+  planRent,
+  propertyTypeLabel,
+  safeUrl,
+} from "@/utils/api/properties";
+import {
   Box,
   Button,
   Container,
-  Flex,
   Grid,
-  GridItem,
   Heading,
-  HStack,
-  Icon,
-  Separator,
   SimpleGrid,
   Stack,
   Text,
 } from "@chakra-ui/react";
-import Image from "next/image";
+import NextLink from "next/link";
 import { useRouter } from "next/router";
-import { FaBath, FaBed } from "react-icons/fa";
-import {
-  FiArrowLeft,
-  FiCalendar,
-  FiCheck,
-  FiMail,
-  FiMapPin,
-  FiMaximize,
-  FiPhone,
-} from "react-icons/fi";
-import NavBar from "../../../components/navigation/navbar";
+import { useEffect, useState } from "react";
 
-export default function PropertySlug() {
+export default function PropertyPage() {
   const router = useRouter();
-  const { slug } = router.query;
-
-  if (!router.isReady) {
-    return null;
-  }
-
-  const property = properties.find((property) => property.slug === slug);
-
-  if (!property) {
-    return (
-      <>
-        <SEO title="Property Not Found" />
-
-        <Box
-          minH="100vh"
-          bg="#f8f9fa"
-          color="#333"
-          fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
-        >
-          <NavBar />
-
-          <Container maxW="1200px" py={10}>
-            <Heading color="#111">Property Not Found</Heading>
-
-            <Text color="#666" mt={2}>
-              We couldn't find a property matching "{slug}".
-            </Text>
-
-            <Button mt={6} onClick={() => router.push("/")}>
-              Back to map
-            </Button>
-          </Container>
-        </Box>
-      </>
-    );
-  }
-
+  const slug = typeof router.query.slug === "string" ? router.query.slug : "";
+  const [result, setResult] = useState<{
+    slug: string;
+    property: Property | null;
+    error: string;
+  }>({ slug: "", property: null, error: "" });
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!slug) return;
+    const controller = new AbortController();
+    fetchProperty(slug, controller.signal)
+      .then((property) => {
+        if (!controller.signal.aborted)
+          setResult({ slug, property, error: "" });
+      })
+      .catch((err: Error) => {
+        if (!controller.signal.aborted)
+          setResult({ slug, property: null, error: err.message });
+      });
+    return () => controller.abort();
+  }, [slug, revision]);
+  const property = result.slug === slug ? result.property : null;
+  const error = result.slug === slug ? result.error : "";
+  const website = safeUrl(property?.website_url);
+  const agencyWebsite = safeUrl(property?.agency?.website_url);
+  const hasCoordinates =
+    property?.latitude !== null && property?.longitude !== null;
   return (
     <>
-      <SEO title={`${property.name} | Property`} />
-
-      <Box
-        minH="100vh"
-        bg="#f8f9fa"
-        color="#333"
-        fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
-      >
-        <NavBar />
-
-        <Container maxW="1200px" py={{ base: 6, md: 10 }}>
-          {/* Back */}
-          <Button
-            variant="ghost"
-            mb={6}
-            px={0}
-            color="#555"
-            _hover={{
-              bg: "transparent",
-              color: "#111",
-            }}
-            onClick={() => router.back()}
-          >
-            <FiArrowLeft />
-            Back
-          </Button>
-
-          {/* Header */}
-          <Stack gap={2} mb={6}>
-            <HStack gap={2} flexWrap="wrap">
-              <Badge
-                bg="#e8f5e9"
-                color="#2e7d32"
-                px={3}
-                py={1}
-                borderRadius="full"
-              >
-                {property.available}
-              </Badge>
-
-              <Badge
-                bg="#eeeeee"
-                color="#555"
-                px={3}
-                py={1}
-                borderRadius="full"
-              >
-                {property.type}
-              </Badge>
-
-              {property.badges.map((badge) => (
-                <Badge
-                  key={badge}
-                  bg="white"
-                  color="#555"
-                  border="1px solid"
-                  borderColor="#e5e5e5"
-                  px={3}
-                  py={1}
-                  borderRadius="full"
-                >
-                  {badge}
-                </Badge>
-              ))}
-            </HStack>
-
-            <Heading
-              fontSize={{ base: "2xl", md: "4xl" }}
-              color="#111"
-              fontWeight="700"
-            >
-              {property.name}
-            </Heading>
-
-            <HStack color="#666" gap={2}>
-              <FiMapPin />
-              <Text>{property.address}</Text>
-            </HStack>
-          </Stack>
-
-          {/* Property image */}
-          <Box
-            borderRadius="xl"
-            overflow="hidden"
-            bg="#ddd"
-            mb={8}
-            boxShadow="sm"
-          >
-            <Image
-              src={property.image}
-              alt={property.name}
-              width={1200}
-              height={500}
-              style={{
-                width: "100%",
-                height: "500px",
-                objectFit: "cover",
-              }}
-            />
-          </Box>
-
-          {/* Main content */}
-          <Grid
-            templateColumns={{
-              base: "1fr",
-              lg: "minmax(0, 1fr) 350px",
-            }}
-            gap={10}
-            alignItems="start"
-          >
-            {/* Left */}
-            <GridItem>
-              <Flex
-                justify="space-between"
-                align={{ base: "flex-start", md: "center" }}
-                direction={{ base: "column", md: "row" }}
-                gap={4}
-                mb={6}
-              >
-                <Box>
-                  <Text
-                    fontSize="3xl"
-                    fontWeight="700"
-                    color="#111"
-                    lineHeight="1"
-                  >
-                    {property.price}
-                    <Text as="span" fontSize="md" fontWeight="400" color="#777">
-                      {" "}
-                      / month
+      <SEO title={property?.name || "Property"} />
+      <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
+        <Container maxW="1100px" py={10}>
+          <NextLink href="/properties">← All properties</NextLink>
+          {error ? (
+            <Box role="alert" mt={6}>
+              <Heading as="h1" size="lg">
+                {error}
+              </Heading>
+              <Button mt={4} onClick={() => setRevision((value) => value + 1)}>
+                Try again
+              </Button>
+            </Box>
+          ) : !property ? (
+            <Text mt={6} role="status">
+              Loading property…
+            </Text>
+          ) : (
+            <>
+              <Heading as="h1" mt={6} mb={3}>
+                {property.name}
+              </Heading>
+              <Text textTransform="capitalize">
+                {propertyTypeLabel(property.property_type)}
+              </Text>
+              <Text mb={5}>{property.address}</Text>
+              <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={7}>
+                <Stack gap={7}>
+                  <PropertyPhoto
+                    key={property.photos[0]?.image_url || property.slug}
+                    src={property.photos[0]?.image_url}
+                    alt={
+                      property.photos[0]?.alt_text ||
+                      `${property.name} exterior`
+                    }
+                    height="340px"
+                  />
+                  {property.photos.length > 1 && (
+                    <SimpleGrid columns={{ base: 2, md: 3 }} gap={3}>
+                      {property.photos.slice(1).map((photo) => (
+                        <PropertyPhoto
+                          key={photo.image_url}
+                          src={photo.image_url}
+                          alt={photo.alt_text || property.name}
+                          height="150px"
+                        />
+                      ))}
+                    </SimpleGrid>
+                  )}
+                  <Box>
+                    <Heading as="h2" size="lg" mb={3}>
+                      About this property
+                    </Heading>
+                    <Text whiteSpace="pre-wrap">
+                      {property.description ||
+                        "A description has not been provided yet."}
                     </Text>
-                  </Text>
-                </Box>
-
-                <HStack gap={5} color="#555">
-                  <HStack gap={2}>
-                    <FaBed />
-                    <Text>{property.bedrooms} Beds</Text>
-                  </HStack>
-
-                  <HStack gap={2}>
-                    <FaBath />
-                    <Text>{property.bathrooms} Baths</Text>
-                  </HStack>
-
-                  <HStack gap={2}>
-                    <FiMaximize />
-                    <Text>{property.sqft} sq ft</Text>
-                  </HStack>
-                </HStack>
-              </Flex>
-
-              <Separator mb={8} />
-
-              {/* Description */}
-              <Box mb={10}>
-                <Heading fontSize="xl" color="#111" mb={4}>
-                  About this property
-                </Heading>
-
-                <Text color="#666" lineHeight="1.8">
-                  {property.description}
-                </Text>
-              </Box>
-
-              {/* Amenities */}
-              <Box mb={10}>
-                <Heading fontSize="xl" color="#111" mb={5}>
-                  Amenities
-                </Heading>
-
-                <SimpleGrid columns={{ base: 1, sm: 2 }} gap={4}>
-                  {property.amenities.map((amenity) => (
-                    <HStack key={amenity} gap={3}>
-                      <Box color="#2e7d32">
-                        <FiCheck />
-                      </Box>
-
-                      <Text color="#555">{amenity}</Text>
-                    </HStack>
-                  ))}
-                </SimpleGrid>
-              </Box>
-
-              {/* Location */}
-              <Box>
-                <Heading fontSize="xl" color="#111" mb={4}>
-                  Location
-                </Heading>
-
+                  </Box>
+                  <Box>
+                    <Heading as="h2" size="lg" mb={4}>
+                      Floor plans and pricing
+                    </Heading>
+                    {property.floor_plans.length ? (
+                      <Stack gap={3}>
+                        {property.floor_plans.map((plan) => (
+                          <Box
+                            key={plan.id}
+                            p={5}
+                            bg="var(--site-surface)"
+                            borderWidth="1px"
+                            borderColor="var(--site-border)"
+                            borderRadius="lg"
+                          >
+                            <Heading as="h3" size="md">
+                              {plan.name}
+                            </Heading>
+                            <Text my={2}>
+                              {plan.bedrooms === 0
+                                ? "Studio"
+                                : `${plan.bedrooms} beds`}{" "}
+                              · {plan.bathrooms} baths
+                              {plan.square_feet
+                                ? ` · ${plan.square_feet.toLocaleString()} sq ft`
+                                : ""}
+                            </Text>
+                            <Text fontWeight="bold">{planRent(plan)}</Text>
+                          </Box>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Text>
+                        Floor plans and pricing have not been added yet.
+                      </Text>
+                    )}
+                  </Box>
+                  <PropertyReviews key={property.slug} slug={property.slug} />
+                </Stack>
                 <Box
-                  height="300px"
-                  bg="#e5e5e5"
+                  bg="var(--site-surface)"
+                  p={6}
+                  borderWidth="1px"
+                  borderColor="var(--site-border)"
                   borderRadius="xl"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  color="#777"
+                  alignSelf="start"
                 >
-                  <Stack align="center" gap={2}>
-                    <Icon fontSize="2xl">
-                      <FiMapPin />
-                    </Icon>
-
-                    <Text>Map coming soon</Text>
+                  <Heading as="h2" size="lg" mb={3}>
+                    Interested in this property?
+                  </Heading>
+                  {property.agency && (
+                    <Text mb={4}>Managed by {property.agency.name}</Text>
+                  )}
+                  <Stack gap={4}>
+                    <FavoriteButton slug={property.slug} />
+                    {website && (
+                      <a
+                        href={website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button w="100%">Visit property website</Button>
+                      </a>
+                    )}
+                    {agencyWebsite && (
+                      <a
+                        href={agencyWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" w="100%">
+                          Visit rental agency website
+                        </Button>
+                      </a>
+                    )}
+                    {property.phone && <Text>Phone: {property.phone}</Text>}
+                    {hasCoordinates && (
+                      <NextLink
+                        href={`/map?property=${encodeURIComponent(property.slug)}`}
+                      >
+                        <Button variant="outline" w="100%">
+                          View on map
+                        </Button>
+                      </NextLink>
+                    )}
+                    <NextLink href="/submit">
+                      <Button variant="outline" w="100%">
+                        Write a review
+                      </Button>
+                    </NextLink>
                   </Stack>
                 </Box>
-              </Box>
-            </GridItem>
-
-            {/* Contact card */}
-            <GridItem>
-              <Box
-                bg="white"
-                border="1px solid"
-                borderColor="#e5e5e5"
-                borderRadius="xl"
-                p={6}
-                position={{ lg: "sticky" }}
-                top={{ lg: "20px" }}
-                boxShadow="sm"
-              >
-                <Heading fontSize="xl" color="#111" mb={2}>
-                  Interested in this property?
-                </Heading>
-
-                <Text color="#777" fontSize="sm" mb={6} lineHeight="1.6">
-                  Learn more about {property.name}, schedule a tour, or contact
-                  the property manager.
-                </Text>
-
-                <Stack gap={3}>
-                  <Button
-                    bg="#111"
-                    color="white"
-                    size="lg"
-                    width="100%"
-                    _hover={{
-                      bg: "#333",
-                    }}
-                  >
-                    <FiMail />
-                    Contact Property
-                  </Button>
-
-                  <Button variant="outline" size="lg" width="100%">
-                    <FiCalendar />
-                    Schedule a Tour
-                  </Button>
-                </Stack>
-
-                <Separator my={6} />
-
-                <Stack gap={4}>
-                  <HStack gap={3}>
-                    <Box bg="#f1f1f1" p={2.5} borderRadius="md">
-                      <FiPhone />
-                    </Box>
-
-                    <Box>
-                      <Text fontSize="xs" color="#888">
-                        Property Manager
-                      </Text>
-
-                      <Text fontWeight="600">(828) 888-8888</Text>
-                    </Box>
-                  </HStack>
-
-                  <HStack gap={3}>
-                    <Box bg="#f1f1f1" p={2.5} borderRadius="md">
-                      <FiMail />
-                    </Box>
-
-                    <Box>
-                      <Text fontSize="xs" color="#888">
-                        Email
-                      </Text>
-
-                      <Text fontWeight="600" fontSize="sm">
-                        leasing@example.com
-                      </Text>
-                    </Box>
-                  </HStack>
-                </Stack>
-              </Box>
-            </GridItem>
-          </Grid>
+              </Grid>
+            </>
+          )}
         </Container>
       </Box>
     </>

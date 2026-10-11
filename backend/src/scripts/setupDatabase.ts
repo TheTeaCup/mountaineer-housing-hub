@@ -77,6 +77,8 @@ const schemaFiles = [
   "properties.sql",
   "floor_plans.sql",
   "reviews.sql",
+  "favorites.sql",
+  "submissions.sql",
 ];
 
 function parseVersion(version: string) {
@@ -130,9 +132,7 @@ async function setupDatabase() {
     console.log(`Connected to database server ${version}.`);
 
     if (!supportsSchema(version)) {
-      throw new Error(
-        "This schema requires MySQL 8.0.16+ or MariaDB 10.6+.",
-      );
+      throw new Error("This schema requires MySQL 8.0.16+ or MariaDB 10.6+.");
     }
 
     const [schemaRows] = await connection.query<mysql.RowDataPacket[]>(
