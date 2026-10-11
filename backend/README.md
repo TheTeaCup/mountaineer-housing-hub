@@ -3,6 +3,46 @@
 The backend uses TypeScript, Express, MySQL (`mysql2`), and Better Auth.
 Redis and object storage are configured separately for the application.
 
+## Automatic backend updates
+
+The root `watcher.mjs` is adapted for Mountaineer Housing Hub. Run it from the
+project root on your server:
+
+```sh
+node watcher.mjs
+```
+
+Alternatively, run `npm run watch:deploy` from `backend`. Use a dedicated, clean
+checkout on `main`, with Git access to `origin`, Node/npm
+installed, and `backend/.env` configured. Commit the watcher and ignore-file
+changes before running it. The watcher pulls with `--ff-only` on startup and
+every 60 seconds, installs backend dependencies, compiles TypeScript, and runs
+`backend/dist/index.js` with the backend directory as its working directory.
+The API port comes from `.env` (`PORT=3001` locally).
+
+Set `WATCHER_REMOTE`, `WATCHER_BRANCH`, or `WATCHER_INTERVAL_MS` in the server
+environment to override `origin`, `main`, or `60000` milliseconds. The checkout
+must already be on the configured branch. Local changes or diverging history
+prevent updates; the watcher does not reset, stash, or merge them.
+
+Backend changes trigger a build and restart; frontend-only changes do not.
+Builds use a temporary output directory so an unsuccessful build does not replace
+the running JavaScript. Failed deployments are retried on the next check. Changes
+to backend dependency files stop the API before installation; it stays stopped
+if installation or the subsequent build fails. A lockfile uses `npm ci`; otherwise
+the watcher uses `npm install`. Build tools are included even in production.
+
+Unexpected API exits restart after five seconds. SIGINT/SIGTERM stop the API,
+with a ten-second shutdown limit. When the watcher itself changes, it stops the
+API and exits so your container/process supervisor can reload it. Configure that
+supervisor to restart on **any exit**, including exit code zero (for example,
+Docker's `restart: unless-stopped`). A terminal-only watcher will need restarting
+manually after its own update. Run only one watcher/API instance per checkout.
+
+This command does not run database migrations, seed data, or deploy the frontend.
+Apply required database migrations separately before deploying code that needs
+them. For local development, continue using `npm run dev`.
+
 ## Connect MySQL and Redis
 
 Copy `example.env` to `.env` and replace the MySQL and Redis placeholders with

@@ -10,6 +10,7 @@
     "staff:grant": "node src/scripts/grantStaff.mjs",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
+    "watch:deploy": "node ../watcher.mjs",
     "build": "tsc -p .",
     "db:setup": "tsx src/scripts/setupDatabase.ts",
     "check:services": "tsx src/scripts/checkServices.ts",

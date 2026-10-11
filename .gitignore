@@ -22,6 +22,9 @@ node_modules
 
 # production
 /build
+/backend/dist/
+/backend/.watcher-build/
+/backend/.watcher-previous/
 
 # misc
 .DS_Store
