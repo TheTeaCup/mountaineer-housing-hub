@@ -74,10 +74,12 @@ export default function ApartmentForm() {
         Suggest a Property or Rental Agency
       </Heading>
       <Text mb={6}>
-        A property is a building, community, or home where people live. A rental
-        agency is the company that manages properties. One agency can manage
-        several different properties. Staff will verify your suggestion before
-        it is added.
+        Suggest one listing for an apartment community or a standalone rental. A
+        community can include several buildings at one location: University
+        Highlands belongs in one community listing. A rental agency, such as
+        ASU4Rent, manages separate properties across town; each property gets
+        its own listing linked to that agency. Staff will verify your
+        suggestion.
       </Text>
       {notice && (
         <Box
@@ -175,11 +177,16 @@ export default function ApartmentForm() {
           <Field.Root required>
             <Field.Label>
               {kind === "property"
-                ? "Property / building name"
+                ? "Property / community name"
                 : "Rental agency name"}{" "}
               <Field.RequiredIndicator />
             </Field.Label>
             <Input name="name" required maxLength={255} />
+            <Field.HelperText>
+              {kind === "property"
+                ? "Use the community name, such as University Highlands. Buildings within the same community share its listing."
+                : "Use the management company name. Its separately located properties will have their own listings."}
+            </Field.HelperText>
           </Field.Root>
           {kind === "property" && (
             <>
@@ -205,8 +212,9 @@ export default function ApartmentForm() {
                 </Field.Label>
                 <Input name="address" required maxLength={255} />
                 <Field.HelperText>
-                  Use the property address, not the rental agency office
-                  address.
+                  For a community, use its main address. Buildings within the
+                  same community share one map location. For a standalone
+                  rental, use the address of that rental.
                 </Field.HelperText>
               </Field.Root>
               <Field.Root>
@@ -217,9 +225,7 @@ export default function ApartmentForm() {
                     value={manager}
                     onChange={(e) => setManager(e.target.value)}
                   >
-                    <option value="unknown">
-                      I do not know the managing agency
-                    </option>
+                    <option value="unknown">No separate agency known</option>
                     {agencies.map((agency) => (
                       <option key={agency.id} value={agency.id}>
                         {agency.name}
@@ -232,8 +238,9 @@ export default function ApartmentForm() {
                   <NativeSelect.Indicator color="var(--site-muted)" />
                 </NativeSelect.Root>
                 <Field.HelperText>
-                  Choose the company that currently manages this property, if
-                  known.
+                  Link a separate management company if known. A community does
+                  not need its own agency record just because it has multiple
+                  buildings.
                 </Field.HelperText>
                 {agencyError && (
                   <Text fontSize="sm" role="status">

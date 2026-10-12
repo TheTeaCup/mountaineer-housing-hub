@@ -58,9 +58,11 @@ export default function ReviewForm() {
         Submit an Apartment Review
       </Heading>
       <Text mb={6}>
-        Review the building or community where you lived. You can discuss its
-        management in the review, but choose the property rather than a rental
-        company. Reviews are checked by staff before publication.
+        Review the community or standalone rental where you lived. Buildings
+        within University Highlands share one community listing and its reviews.
+        For an agency with properties across town, choose the specific property
+        where you lived. You can discuss management in your review. Staff check
+        reviews before publication.
       </Text>
       {error && (
         <Text role="alert" color="fg.error" mb={3}>

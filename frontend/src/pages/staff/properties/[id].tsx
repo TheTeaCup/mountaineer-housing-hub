@@ -2,6 +2,7 @@ import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
+import { propertyTypeLabel } from "@/utils/api/properties";
 import {
   Box,
   Button,
@@ -39,7 +40,7 @@ interface PropertyForm {
   phone: string | null;
 }
 const fields = [
-  ["name", "Property name", 255],
+  ["name", "Property / community name", 255],
   ["address", "Street address", 255],
   ["address_line2", "Address line 2", 255],
   ["city", "City", 100],
@@ -169,6 +170,14 @@ export default function EditProperty({
                 </Text>
               )}
               {property.submission_kind !== "agency" && (
+                <Text fontSize="sm" color="var(--site-muted)">
+                  Keep buildings in the same apartment community under one
+                  listing, such as University Highlands. Separate properties
+                  across town get individual listings linked to their managing
+                  agency. Use the main address and map location of the community.
+                </Text>
+              )}
+              {property.submission_kind !== "agency" && (
                 <Field.Root required>
                   <Field.Label>
                     Property URL slug <Field.RequiredIndicator />
@@ -269,7 +278,7 @@ export default function EditProperty({
                           "other",
                         ].map((type) => (
                           <option key={type} value={type}>
-                            {type.replace(/_/g, " ")}
+                            {propertyTypeLabel(type)}
                           </option>
                         ))}
                       </NativeSelect.Field>
@@ -283,7 +292,7 @@ export default function EditProperty({
                         name="agency_id"
                         defaultValue={property.agency_id ?? ""}
                       >
-                        <option value="">Unknown</option>
+                        <option value="">No separate agency known</option>
                         {agencies.map((agency) => (
                           <option key={agency.id} value={agency.id}>
                             {agency.name}
@@ -292,14 +301,18 @@ export default function EditProperty({
                       </NativeSelect.Field>
                       <NativeSelect.Indicator />
                     </NativeSelect.Root>
+                    <Field.HelperText>
+                      Link a separate management company if known. Multiple
+                      buildings do not make a community a rental agency.
+                    </Field.HelperText>
                   </Field.Root>
                   {suggestion && (
                     <>
                       <Text>
                         To create a new managing agency, leave the existing
-                        agency selection as Unknown and enter its details below.
-                        Clear these fields to keep the manager unknown or select
-                        an existing agency.
+                        agency selection as No separate agency known and enter
+                        its details below. Clear these fields to keep the
+                        manager unknown or select an existing agency.
                       </Text>
                       <Field.Root>
                         <Field.Label>

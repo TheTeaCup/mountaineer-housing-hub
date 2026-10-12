@@ -28,7 +28,9 @@ export default function PropertiesList() {
             Find your next home
           </Heading>
           <Text mb={6}>
-            Explore published properties and their managing rental agencies.
+            Explore apartment communities and standalone rentals. A community
+            with several buildings has one listing; separate properties managed
+            by the same rental agency have their own listings.
           </Text>
           <Flex
             as="form"

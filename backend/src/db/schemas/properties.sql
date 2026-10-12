@@ -1,4 +1,6 @@
 -- A property is a community/development or a standalone rental, not a unit.
+-- Multiple buildings in one named community share its listing, reviews, and map location.
+-- Separate properties across town remain separate listings even with the same agency.
 -- agency_id identifies the current manager, not necessarily the legal owner.
 CREATE TABLE properties (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
