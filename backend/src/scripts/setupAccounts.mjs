@@ -17,6 +17,7 @@ try {
   if (!submissionColumns.length) await db.query(await readFile(new URL("../db/migrations/002_property_and_agency_submissions.sql", import.meta.url), "utf8"));
   const [profileColumns] = await db.execute("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_profiles' AND COLUMN_NAME = 'avatar_variant'");
   if (!profileColumns.length) await db.query(await readFile(new URL("../db/migrations/003_generated_profiles.sql", import.meta.url), "utf8"));
+  await db.query(await readFile(new URL("../db/migrations/004_clear_google_profile_photos.sql", import.meta.url), "utf8"));
   if (process.argv.includes("--seed-demo")) {
     // Demo catalog seeding is opt-in and unrelated to user-supplied examples.
     const { properties } = await import("../../../frontend/src/data/properties.ts");

@@ -1,5 +1,7 @@
 import { Router } from "express";
 import type { AccountDependencies } from "./account.js";
+import { publishSuggestion } from "./publish-suggestion.js";
+import { validateHousingSubmission } from "./housing-submission.js";
 
 export function createStaffRouter(deps: AccountDependencies) {
   const router = Router();
@@ -71,6 +73,19 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(400).json({ message: "Choose approve or reject." });
       return;
     }
+    if (req.body.status === "approved") {
+      const result = await deps.transaction((db) =>
+        publishSuggestion(db, String(req.params.id)),
+      );
+      if (!result) {
+        res.status(409).json({
+          message: "Submission was already reviewed or no longer exists.",
+        });
+        return;
+      }
+      res.json(result);
+      return;
+    }
     const result = await deps.execute(
       "UPDATE apartment_submissions SET status = ? WHERE id = ? AND status = 'pending'",
       [req.body.status, req.params.id],
@@ -79,6 +94,114 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(409).json({
         message: "Submission was already reviewed or no longer exists.",
       });
+      return;
+    }
+    res.json({ updated: true });
+  });
+  router.get("/properties", async (_req, res) => {
+    res.json(
+      await deps.query("SELECT id, name, slug FROM properties ORDER BY name"),
+    );
+  });
+  router.get("/properties/:id", async (req, res) => {
+    const rows = await deps.query(
+      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone FROM properties WHERE id = ?",
+      [req.params.id],
+    );
+    if (!rows.length) {
+      res.status(404).json({ message: "Property not found." });
+      return;
+    }
+    res.json(rows[0]);
+  });
+  router.patch("/properties/:id", async (req, res) => {
+    let property;
+    try {
+      property = validateHousingSubmission({
+        ...req.body,
+        submission_kind: "property",
+        proposed_agency_name: null,
+        proposed_agency_website: null,
+      });
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
+    }
+    const latitude =
+      req.body.latitude === "" || req.body.latitude == null
+        ? null
+        : Number(req.body.latitude);
+    const longitude =
+      req.body.longitude === "" || req.body.longitude == null
+        ? null
+        : Number(req.body.longitude);
+    if (
+      (latitude === null) !== (longitude === null) ||
+      (latitude !== null &&
+        (!Number.isFinite(latitude) || Math.abs(latitude) > 90)) ||
+      (longitude !== null &&
+        (!Number.isFinite(longitude) || Math.abs(longitude) > 180))
+    ) {
+      res.status(400).json({
+        message:
+          "Enter both coordinates: latitude from -90 to 90 and longitude from -180 to 180.",
+      });
+      return;
+    }
+    const limits = {
+      address_line2: 255,
+      city: 100,
+      state: 2,
+      postal_code: 10,
+      phone: 32,
+    };
+    for (const [key, max] of Object.entries(limits)) {
+      if (
+        typeof req.body[key] !== "string" ||
+        req.body[key].length > max ||
+        (["city", "state"].includes(key) && !req.body[key].trim())
+      ) {
+        res
+          .status(400)
+          .json({ message: "Check the address and phone fields." });
+        return;
+      }
+    }
+    if (!/^[A-Za-z]{2}$/.test(req.body.state)) {
+      res.status(400).json({ message: "Use a two-letter state code." });
+      return;
+    }
+    if (property.agency_id) {
+      const agencies = await deps.query(
+        "SELECT id FROM agencies WHERE id = ?",
+        [property.agency_id],
+      );
+      if (!agencies.length) {
+        res.status(400).json({ message: "Choose an existing rental agency." });
+        return;
+      }
+    }
+    const result = await deps.execute(
+      "UPDATE properties SET name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ? WHERE id = ?",
+      [
+        property.name,
+        property.address,
+        property.property_type,
+        property.website,
+        property.information,
+        property.agency_id,
+        req.body.address_line2.trim() || null,
+        req.body.city.trim(),
+        req.body.state.toUpperCase(),
+        req.body.postal_code.trim() || null,
+        latitude,
+        longitude,
+        req.body.phone.trim() || null,
+        req.params.id,
+      ],
+    );
+    if (!result.affectedRows) {
+      res.status(404).json({ message: "Property not found." });
       return;
     }
     res.json({ updated: true });

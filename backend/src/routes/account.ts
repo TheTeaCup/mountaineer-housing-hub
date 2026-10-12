@@ -2,7 +2,15 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { validateHousingSubmission } from "./housing-submission.js";
 
-export interface AccountDependencies {
+export interface CatalogDatabase {
+  query: <T>(sql: string, params?: unknown[]) => Promise<T[]>;
+  execute: (
+    sql: string,
+    params?: unknown[],
+  ) => Promise<{ affectedRows: number; insertId?: number }>;
+}
+export interface AccountDependencies extends CatalogDatabase {
+  transaction: <T>(work: (db: CatalogDatabase) => Promise<T>) => Promise<T>;
   frontendOrigin: string;
   getUser: (headers: Record<string, unknown>) => Promise<string | undefined>;
   query: <T>(sql: string, params?: unknown[]) => Promise<T[]>;

@@ -12,7 +12,7 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const propertyTypes = [
   ["apartment_complex", "Apartment complex / community"],
@@ -32,6 +32,16 @@ export default function ApartmentForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const confirmation = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (notice) {
+      confirmation.current?.focus();
+      confirmation.current?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    }
+  }, [notice]);
   useEffect(() => {
     if (!session) return;
     let active = true;
@@ -75,11 +85,30 @@ export default function ApartmentForm() {
         </Text>
       )}
       {notice && (
-        <Text role="status" mb={3}>
-          {notice}
-        </Text>
+        <Box
+          ref={confirmation}
+          tabIndex={-1}
+          role="status"
+          borderWidth="2px"
+          borderColor="var(--site-accent-fg)"
+          borderRadius="lg"
+          p={6}
+          mb={5}
+        >
+          <Heading as="h2" size="lg" mb={3}>
+            Suggestion received
+          </Heading>
+          <Text mb={4}>{notice} Staff will verify it before publication.</Text>
+          <Button onClick={() => setNotice("")}>
+            Submit another suggestion
+          </Button>
+          <Box mt={4}>
+            <NextLink href="/submit">Back to apartment reviews</NextLink>
+          </Box>
+        </Box>
       )}
       <Box
+        display={notice ? "none" : undefined}
         as="form"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -111,7 +140,7 @@ export default function ApartmentForm() {
                   : null,
             });
             setNotice(
-              `${kind === "property" ? "Property" : "Rental agency"} suggestion submitted for staff review.`,
+              `Your suggestion for ${String(data.get("name"))} was submitted for staff review.`,
             );
             form.reset();
             setManager("unknown");

@@ -46,7 +46,12 @@ export const auth = betterAuth({
 
   databaseHooks: {
     user: {
-      create: {},
+      create: {
+        before: async (user) => ({ data: { ...user, image: null } }),
+      },
+      update: {
+        before: async (user) => ({ data: { ...user, image: null } }),
+      },
     },
 
     session: {

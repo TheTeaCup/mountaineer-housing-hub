@@ -9,6 +9,7 @@ import { config } from "./config.js";
 import redis from "./db/redis.js";
 import { createAccountRouter } from "./routes/account.js";
 import { createStaffRouter } from "./routes/staff.js";
+import { transaction } from "./db/transaction.js";
 import { query } from "./db/query.js";
 import { execute } from "./db/execute.js";
 import { ensureAuthProfile } from "./auth/ensureProfile.js";
@@ -119,6 +120,7 @@ async function startServer() {
     },
     query,
     execute,
+    transaction,
     ensureProfile: ensureAuthProfile,
     generateUsername: generateUniqueUsername,
   };

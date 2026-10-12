@@ -63,6 +63,10 @@ export default function StaffDashboard({
         : "Review submissions";
   const [reviews, setReviews] = useState<StaffReview[]>([]);
   const [apartments, setApartments] = useState<ApartmentSubmission[]>([]);
+  const [properties, setProperties] = useState<{ id: number; name: string }[]>(
+    [],
+  );
+  const [editId, setEditId] = useState<number | null>(null);
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -84,7 +88,14 @@ export default function StaffDashboard({
         } else if (tab === "apartments") {
           const data =
             await accountRequest<ApartmentSubmission[]>("/staff/apartments");
-          if (active) setApartments(data);
+          const listings =
+            await accountRequest<{ id: number; name: string }[]>(
+              "/staff/properties",
+            );
+          if (active) {
+            setApartments(data);
+            setProperties(listings);
+          }
         } else {
           const data = await accountRequest<{
             users: SiteUser[];
@@ -115,8 +126,17 @@ export default function StaffDashboard({
     setError("");
     setNotice("");
     try {
-      await accountRequest(`/staff/${kind}/${id}`, "PATCH", { status });
-      setNotice("Submission reviewed.");
+      const result = await accountRequest<{ propertyId?: number }>(
+        `/staff/${kind}/${id}`,
+        "PATCH",
+        { status },
+      );
+      setEditId(result.propertyId ?? null);
+      setNotice(
+        kind === "apartments" && status === "approved"
+          ? "Suggestion approved and added to the catalog."
+          : "Submission reviewed.",
+      );
       setRevision((value) => value + 1);
     } catch (err) {
       setError((err as Error).message);
@@ -177,6 +197,14 @@ export default function StaffDashboard({
               {notice && (
                 <Text role="status" mb={4}>
                   {notice}
+                  {editId && (
+                    <>
+                      {" "}
+                      <NextLink href={`/staff/properties/${editId}`}>
+                        Edit property details and coordinates →
+                      </NextLink>
+                    </>
+                  )}
                 </Text>
               )}
               {busy ? (
@@ -237,9 +265,9 @@ export default function StaffDashboard({
                     Pending property and agency suggestions
                   </Heading>
                   <Text fontSize="sm">
-                    Showing up to 100 oldest suggestions. Approval accepts a
-                    suggestion for catalog preparation; it does not
-                    automatically publish a listing.
+                    Showing up to 100 oldest suggestions. Approval publishes a
+                    property listing or adds a rental agency to the catalog.
+                    Edit properties below to add coordinates and verify details.
                   </Text>
                   {!apartments.length && (
                     <Text>No apartment suggestions waiting for review.</Text>
@@ -293,7 +321,7 @@ export default function StaffDashboard({
                             moderate("apartments", apartment.id, "approved")
                           }
                         >
-                          Approve suggestion
+                          Approve and publish
                         </Button>
                         <Button
                           disabled={pending !== null}
@@ -305,6 +333,19 @@ export default function StaffDashboard({
                           Reject
                         </Button>
                       </Flex>
+                    </Box>
+                  ))}
+                  <Heading as="h2" size="lg" mt={6}>
+                    Edit properties
+                  </Heading>
+                  {!properties.length && (
+                    <Text>No properties in the catalog yet.</Text>
+                  )}
+                  {properties.map((property) => (
+                    <Box {...panel} key={property.id}>
+                      <NextLink href={`/staff/properties/${property.id}`}>
+                        {property.name} — Edit details and coordinates →
+                      </NextLink>
                     </Box>
                   ))}
                 </Stack>
