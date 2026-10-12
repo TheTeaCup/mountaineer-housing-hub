@@ -4,6 +4,7 @@ import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import ProfileCustomization from "@/components/ui/profile-customization";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest, type MyReview } from "@/utils/api/account";
 import {
   Box,
@@ -33,20 +34,24 @@ function ReviewEditor({
   const [rating, setRating] = useState(review.rating);
   const [deleting, setDeleting] = useState(false);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
   async function mutate(method: string) {
     setPending(true);
-    setError("");
     try {
       await accountRequest(
         `/account/reviews/${review.id}`,
         method,
         method === "PATCH" ? { rating, body } : undefined,
       );
+      notifySuccess(
+        method === "DELETE" ? "Review deleted" : "Review updated",
+        method === "PATCH"
+          ? "Your edits have been sent to staff for approval."
+          : undefined,
+      );
       await refresh();
       setEditing(false);
     } catch (err) {
-      setError((err as Error).message);
+      notifyError("Could not update review", err);
     } finally {
       setPending(false);
     }
@@ -132,11 +137,6 @@ function ReviewEditor({
             Keep review
           </Button>
         </Box>
-      )}
-      {error && (
-        <Text role="alert" color="fg.error">
-          {error}
-        </Text>
       )}
     </Box>
   );
@@ -295,7 +295,7 @@ export default function AccountPage() {
                           router.reload();
                         }
                       } catch (err) {
-                        setError((err as Error).message);
+                        notifyError("Could not delete account", err);
                       } finally {
                         setPending(false);
                       }

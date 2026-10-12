@@ -8,16 +8,37 @@ import {
 } from "@chakra-ui/react";
 
 export const toaster = createToaster({
-  placement: "bottom-end",
+  placement: "top-end",
   pauseOnPageIdle: true,
+  max: 3,
 });
+
+export function notifySuccess(title: string, description?: string) {
+  toaster.create({
+    title,
+    description,
+    type: "success",
+    duration: 5000,
+    closable: true,
+  });
+}
+
+export function notifyError(title: string, error: unknown) {
+  toaster.create({
+    title,
+    description: error instanceof Error ? error.message : "Please try again.",
+    type: "error",
+    duration: 10000,
+    closable: true,
+  });
+}
 
 export const Toaster = () => {
   return (
     <Portal>
       <ChakraToaster toaster={toaster} insetInline={{ mdDown: "4" }}>
         {(toast) => (
-          <Toast.Root width={{ md: "sm" }}>
+          <Toast.Root width={{ md: "sm" }} boxShadow="xl" borderRadius="lg">
             {toast.type === "loading" ? (
               <Spinner size="sm" color="blue.solid" />
             ) : (

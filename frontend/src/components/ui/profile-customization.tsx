@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { useAccount } from "./account-provider";
 import { useAuth } from "./auth-provider";
+import { notifyError, notifySuccess } from "./toaster";
 import UserAvatar, { avatarPalettes } from "./user-avatar";
 
 export default function ProfileCustomization() {
@@ -23,8 +24,6 @@ export default function ProfileCustomization() {
     AccountProfile["avatar_palette"] | null
   >(null);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   if (!profile || !session) return <Text>Loading profile customization…</Text>;
   const selectedVariant = variant || profile.avatar_variant;
   const selectedPalette = palette || profile.avatar_palette;
@@ -36,14 +35,12 @@ export default function ProfileCustomization() {
     body?: unknown,
   ) {
     setPending(true);
-    setError("");
-    setNotice("");
     try {
       await accountRequest(path, method, body);
       await refresh();
-      setNotice(message);
+      notifySuccess(message);
     } catch (err) {
-      setError((err as Error).message);
+      notifyError("Could not update profile", err);
     } finally {
       setPending(false);
     }
@@ -180,12 +177,6 @@ export default function ProfileCustomization() {
           Save avatar style
         </Button>
       </Box>
-      {error && (
-        <Text role="alert" color="fg.error">
-          {error}
-        </Text>
-      )}
-      {notice && <Text role="status">{notice}</Text>}
     </Stack>
   );
 }

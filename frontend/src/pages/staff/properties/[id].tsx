@@ -1,5 +1,6 @@
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import {
   Box,
@@ -18,6 +19,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 interface PropertyForm {
+  submission_kind?: "property" | "agency";
+  proposed_agency_name?: string | null;
+  proposed_agency_website?: string | null;
   id: number;
   name: string;
   slug: string;
@@ -46,25 +50,42 @@ const fields = [
   ["latitude", "Latitude", 20],
   ["longitude", "Longitude", 20],
 ] as const;
-export default function EditProperty() {
+export default function EditProperty({
+  suggestion = false,
+}: {
+  suggestion?: boolean;
+}) {
   const router = useRouter();
   const { profile, error: accessError } = useAccount();
   const [property, setProperty] = useState<PropertyForm | null>(null);
   const [agencies, setAgencies] = useState<{ id: number; name: string }[]>([]);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
   const id = router.query.id;
   useEffect(() => {
     if (profile?.role !== "staff" || typeof id !== "string") return;
     let active = true;
     Promise.all([
-      accountRequest<PropertyForm>(`/staff/properties/${id}`),
+      accountRequest<PropertyForm>(
+        `/staff/${suggestion ? "apartments" : "properties"}/${id}`,
+      ),
       accountRequest<{ id: number; name: string }[]>("/account/agencies"),
     ])
       .then(([property, agencies]) => {
         if (active) {
-          setProperty(property);
+          setProperty({
+            ...property,
+            slug:
+              property.slug ??
+              (property.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .slice(0, 140)
+                .replace(/^-|-$/g, "") ||
+                "listing"),
+            city: property.city ?? "Boone",
+            state: property.state ?? "NC",
+          });
           setAgencies(agencies);
         }
       })
@@ -74,16 +95,16 @@ export default function EditProperty() {
     return () => {
       active = false;
     };
-  }, [id, profile?.role]);
+  }, [id, profile?.role, suggestion]);
   return (
     <>
-      <SEO title="Edit property" noIndex />
+      <SEO title={suggestion ? "Review suggestion" : "Edit property"} noIndex />
       <Container maxW="800px" py={10}>
         <NextLink href="/staff/apartments">
           ← Property submissions and listings
         </NextLink>
         <Heading as="h1" my={5}>
-          Edit property
+          {suggestion ? "Review and edit suggestion" : "Edit property"}
         </Heading>
         {accessError || error ? (
           <Text role="alert">{accessError || error}</Text>
@@ -100,116 +121,211 @@ export default function EditProperty() {
               event.preventDefault();
               setPending(true);
               setError("");
-              setNotice("");
               const data = Object.fromEntries(
                 new FormData(event.currentTarget as unknown as HTMLFormElement),
               );
               try {
-                await accountRequest(
-                  `/staff/properties/${property.id}`,
+                const edits = {
+                  ...data,
+                  submission_kind: property.submission_kind ?? "property",
+                  agency_id: data.agency_id ? Number(data.agency_id) : null,
+                };
+                const result = await accountRequest<{ propertyId?: number }>(
+                  `/staff/${suggestion ? "apartments" : "properties"}/${property.id}`,
                   "PATCH",
-                  {
-                    ...data,
-                    agency_id: data.agency_id ? Number(data.agency_id) : null,
-                  },
+                  suggestion ? { status: "approved", edits } : edits,
                 );
-                setNotice(
-                  "Property saved. The public listing and map use these details.",
+                if (suggestion) {
+                  notifySuccess(
+                    "Suggestion published",
+                    "Approved and published with your edits.",
+                  );
+                  await router.push(
+                    result.propertyId
+                      ? `/staff/properties/${result.propertyId}?published=1`
+                      : "/staff/apartments",
+                  );
+                  return;
+                }
+                notifySuccess(
+                  "Property saved",
+                  "The public listing and map use these details.",
+                );
+                setProperty((current) =>
+                  current ? { ...current, slug: String(data.slug) } : current,
                 );
               } catch (error) {
-                setError((error as Error).message);
+                notifyError("Could not save property", error);
               } finally {
                 setPending(false);
               }
             }}
           >
             <Stack gap={4}>
-              <Text>
-                Add both coordinates to show this property on the map. Leave
-                both blank if the location has not been verified.
-              </Text>
-              {fields.map(([name, label, max]) => (
-                <Field.Root
-                  key={name}
-                  required={["name", "address", "city", "state"].includes(name)}
-                >
-                  <Field.Label>{label}</Field.Label>
+              {suggestion && (
+                <Text>
+                  Review and correct the submitted information. Publishing will
+                  use the values in this form.
+                </Text>
+              )}
+              {property.submission_kind !== "agency" && (
+                <Field.Root required>
+                  <Field.Label>
+                    Property URL slug <Field.RequiredIndicator />
+                  </Field.Label>
                   <Input
-                    name={name}
-                    defaultValue={property[name] ?? ""}
-                    maxLength={max}
+                    name="slug"
+                    defaultValue={property.slug}
+                    required
+                    maxLength={140}
+                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  />
+                  <Field.HelperText>
+                    /properties/{property.slug}. Use lowercase letters, numbers,
+                    and hyphens. Changing this slug changes the public URL.
+                  </Field.HelperText>
+                </Field.Root>
+              )}
+              {!suggestion && (
+                <NextLink href={`/properties/${property.slug}`}>
+                  View public property page →
+                </NextLink>
+              )}
+              {property.submission_kind !== "agency" && (
+                <Text>
+                  Add both coordinates to show this property on the map. Leave
+                  both blank if the location has not been verified.
+                </Text>
+              )}
+              {fields
+                .filter(
+                  ([name]) =>
+                    property.submission_kind !== "agency" ||
+                    ["name", "website"].includes(name),
+                )
+                .map(([name, label, max]) => (
+                  <Field.Root
+                    key={name}
                     required={["name", "address", "city", "state"].includes(
                       name,
                     )}
-                    type={
-                      name === "website"
-                        ? "url"
-                        : ["latitude", "longitude"].includes(name)
-                          ? "number"
-                          : "text"
-                    }
-                    step={
-                      ["latitude", "longitude"].includes(name)
-                        ? "any"
-                        : undefined
-                    }
-                    min={
-                      name === "latitude"
-                        ? -90
-                        : name === "longitude"
-                          ? -180
-                          : undefined
-                    }
-                    max={
-                      name === "latitude"
-                        ? 90
-                        : name === "longitude"
-                          ? 180
-                          : undefined
-                    }
-                  />
-                </Field.Root>
-              ))}
-              <Field.Root>
-                <Field.Label>Property type</Field.Label>
-                <NativeSelect.Root>
-                  <NativeSelect.Field
-                    name="property_type"
-                    defaultValue={property.property_type}
                   >
-                    {[
-                      "apartment_complex",
-                      "townhome",
-                      "house",
-                      "duplex",
-                      "condo",
-                      "other",
-                    ].map((type) => (
-                      <option key={type} value={type}>
-                        {type.replace(/_/g, " ")}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Field.Root>
-              <Field.Root>
-                <Field.Label>Managing agency</Field.Label>
-                <NativeSelect.Root>
-                  <NativeSelect.Field
-                    name="agency_id"
-                    defaultValue={property.agency_id ?? ""}
-                  >
-                    <option value="">Unknown</option>
-                    {agencies.map((agency) => (
-                      <option key={agency.id} value={agency.id}>
-                        {agency.name}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Field.Root>
+                    <Field.Label>
+                      {name === "name" && property.submission_kind === "agency"
+                        ? "Agency name"
+                        : label}
+                    </Field.Label>
+                    <Input
+                      name={name}
+                      defaultValue={property[name] ?? ""}
+                      maxLength={max}
+                      required={["name", "address", "city", "state"].includes(
+                        name,
+                      )}
+                      type={
+                        name === "website"
+                          ? "url"
+                          : ["latitude", "longitude"].includes(name)
+                            ? "number"
+                            : "text"
+                      }
+                      step={
+                        ["latitude", "longitude"].includes(name)
+                          ? "any"
+                          : undefined
+                      }
+                      min={
+                        name === "latitude"
+                          ? -90
+                          : name === "longitude"
+                            ? -180
+                            : undefined
+                      }
+                      max={
+                        name === "latitude"
+                          ? 90
+                          : name === "longitude"
+                            ? 180
+                            : undefined
+                      }
+                    />
+                  </Field.Root>
+                ))}
+              {property.submission_kind !== "agency" && (
+                <>
+                  <Field.Root>
+                    <Field.Label>Property type</Field.Label>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        name="property_type"
+                        defaultValue={property.property_type}
+                      >
+                        {[
+                          "apartment_complex",
+                          "townhome",
+                          "house",
+                          "duplex",
+                          "condo",
+                          "other",
+                        ].map((type) => (
+                          <option key={type} value={type}>
+                            {type.replace(/_/g, " ")}
+                          </option>
+                        ))}
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>Managing agency</Field.Label>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        name="agency_id"
+                        defaultValue={property.agency_id ?? ""}
+                      >
+                        <option value="">Unknown</option>
+                        {agencies.map((agency) => (
+                          <option key={agency.id} value={agency.id}>
+                            {agency.name}
+                          </option>
+                        ))}
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
+                  </Field.Root>
+                  {suggestion && (
+                    <>
+                      <Text>
+                        To create a new managing agency, leave the existing
+                        agency selection as Unknown and enter its details below.
+                        Clear these fields to keep the manager unknown or select
+                        an existing agency.
+                      </Text>
+                      <Field.Root>
+                        <Field.Label>
+                          Suggested managing agency name
+                        </Field.Label>
+                        <Input
+                          name="proposed_agency_name"
+                          defaultValue={property.proposed_agency_name ?? ""}
+                          maxLength={255}
+                        />
+                      </Field.Root>
+                      <Field.Root>
+                        <Field.Label>
+                          Suggested managing agency website
+                        </Field.Label>
+                        <Input
+                          name="proposed_agency_website"
+                          type="url"
+                          defaultValue={property.proposed_agency_website ?? ""}
+                          maxLength={2048}
+                        />
+                      </Field.Root>
+                    </>
+                  )}
+                </>
+              )}
               <Field.Root>
                 <Field.Label>Description</Field.Label>
                 <Textarea
@@ -219,9 +335,10 @@ export default function EditProperty() {
                   maxLength={10000}
                 />
               </Field.Root>
-              {notice && <Text role="status">{notice}</Text>}
               <Button type="submit" loading={pending}>
-                Save property
+                {suggestion
+                  ? "Approve and publish edited suggestion"
+                  : "Save property"}
               </Button>
             </Stack>
           </Box>

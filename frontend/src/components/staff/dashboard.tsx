@@ -1,6 +1,7 @@
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import {
   Box,
@@ -73,7 +74,6 @@ export default function StaffDashboard({
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     if (profile?.role !== "staff") return;
@@ -124,7 +124,6 @@ export default function StaffDashboard({
   ) {
     setPending(id);
     setError("");
-    setNotice("");
     try {
       const result = await accountRequest<{ propertyId?: number }>(
         `/staff/${kind}/${id}`,
@@ -132,14 +131,15 @@ export default function StaffDashboard({
         { status },
       );
       setEditId(result.propertyId ?? null);
-      setNotice(
+      notifySuccess(
+        "Submission reviewed",
         kind === "apartments" && status === "approved"
           ? "Suggestion approved and added to the catalog."
-          : "Submission reviewed.",
+          : `Submission ${status}.`,
       );
       setRevision((value) => value + 1);
     } catch (err) {
-      setError((err as Error).message);
+      notifyError("Could not review submission", err);
     } finally {
       setPending(null);
     }
@@ -194,18 +194,12 @@ export default function StaffDashboard({
                   {error}
                 </Text>
               )}
-              {notice && (
-                <Text role="status" mb={4}>
-                  {notice}
-                  {editId && (
-                    <>
-                      {" "}
-                      <NextLink href={`/staff/properties/${editId}`}>
-                        Edit property details and coordinates →
-                      </NextLink>
-                    </>
-                  )}
-                </Text>
+              {editId && (
+                <Box mb={4}>
+                  <NextLink href={`/staff/properties/${editId}`}>
+                    Edit property details and coordinates →
+                  </NextLink>
+                </Box>
               )}
               {busy ? (
                 <Text role="status">Loading…</Text>
@@ -315,14 +309,9 @@ export default function StaffDashboard({
                         {apartment.information}
                       </Text>
                       <Flex gap={3} mt={4}>
-                        <Button
-                          disabled={pending !== null}
-                          onClick={() =>
-                            moderate("apartments", apartment.id, "approved")
-                          }
-                        >
-                          Approve and publish
-                        </Button>
+                        <NextLink href={`/staff/apartments/${apartment.id}`}>
+                          Review and edit before approval →
+                        </NextLink>
                         <Button
                           disabled={pending !== null}
                           variant="outline"

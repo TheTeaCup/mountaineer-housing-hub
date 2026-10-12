@@ -1,24 +1,22 @@
-import { randomUUID } from "node:crypto";
+import { availableSlug } from "./catalog-slug.js";
 import type { CatalogDatabase } from "./account.js";
-import { validateHousingSubmission } from "./housing-submission.js";
+import { validatePublication } from "./publication.js";
 
-export function catalogSlug(name: string) {
-  return `${
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 140) || "listing"
-  }-${randomUUID()}`;
-}
-
-export async function publishSuggestion(db: CatalogDatabase, id: string) {
+export async function publishSuggestion(
+  db: CatalogDatabase,
+  id: string,
+  edits: Record<string, unknown> = {},
+) {
   const rows = await db.query<Record<string, unknown>>(
     "SELECT * FROM apartment_submissions WHERE id = ? AND status = 'pending' FOR UPDATE",
     [id],
   );
   if (!rows.length) return null;
-  const submission = validateHousingSubmission(rows[0]);
+  const { submission, details, latitude, longitude } = validatePublication({
+    ...rows[0],
+    ...edits,
+    submission_kind: rows[0].submission_kind,
+  });
   let agencyId = submission.agency_id;
   if (
     submission.submission_kind === "agency" ||
@@ -33,7 +31,7 @@ export async function publishSuggestion(db: CatalogDatabase, id: string) {
       "INSERT INTO agencies (name, slug, website_url, description) VALUES (?, ?, ?, ?)",
       [
         name,
-        catalogSlug(name),
+        await availableSlug(db, "agencies", name),
         submission.submission_kind === "agency"
           ? submission.website
           : submission.proposed_agency_website,
@@ -45,22 +43,39 @@ export async function publishSuggestion(db: CatalogDatabase, id: string) {
   let propertyId: number | undefined;
   if (submission.submission_kind === "property") {
     const property = await db.execute(
-      "INSERT INTO properties (name, slug, property_type, address_line1, website_url, description, agency_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'published')",
+      "INSERT INTO properties (name, slug, property_type, address_line1, website_url, description, agency_id, address_line2, city, state, postal_code, phone, latitude, longitude, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published')",
       [
         submission.name,
-        catalogSlug(submission.name!),
+        await availableSlug(db, "properties", submission.name!, edits.slug),
         submission.property_type,
         submission.address,
         submission.website,
         submission.information,
         agencyId,
+        details.address_line2,
+        details.city,
+        details.state,
+        details.postal_code,
+        details.phone,
+        latitude,
+        longitude,
       ],
     );
     propertyId = property.insertId;
   }
   await db.execute(
-    "UPDATE apartment_submissions SET status = 'approved' WHERE id = ?",
-    [id],
+    "UPDATE apartment_submissions SET status = 'approved', name = ?, address = ?, property_type = ?, website = ?, information = ?, agency_id = ?, proposed_agency_name = ?, proposed_agency_website = ? WHERE id = ?",
+    [
+      submission.name,
+      submission.address,
+      submission.property_type,
+      submission.website,
+      submission.information,
+      submission.agency_id,
+      submission.proposed_agency_name,
+      submission.proposed_agency_website,
+      id,
+    ],
   );
   return { updated: true, propertyId, agencyId };
 }

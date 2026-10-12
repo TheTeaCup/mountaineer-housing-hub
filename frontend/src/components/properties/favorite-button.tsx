@@ -1,5 +1,6 @@
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { Box, Button, IconButton, Text } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -17,7 +18,6 @@ export default function FavoriteButton({
   const { session, loading } = useAuth();
   const { favorites, toggleFavorite, error: accountError } = useAccount();
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
   const router = useRouter();
   const saved = favorites.some((favorite) => favorite.slug === slug);
   const Control = iconOnly ? IconButton : Button;
@@ -55,11 +55,15 @@ export default function FavoriteButton({
             return;
           }
           setPending(true);
-          setError("");
           try {
             await toggleFavorite(slug);
+            notifySuccess(
+              saved
+                ? "Apartment removed from favorites"
+                : "Apartment saved to favorites",
+            );
           } catch (err) {
-            setError((err as Error).message);
+            notifyError("Could not update favorites", err);
           } finally {
             setPending(false);
           }
@@ -70,7 +74,7 @@ export default function FavoriteButton({
         />
         {!iconOnly && (saved ? "Saved apartment" : "Save apartment")}
       </Control>
-      {(error || (!iconOnly && accountError)) && (
+      {!iconOnly && accountError && (
         <Text
           role="alert"
           fontSize="sm"
@@ -89,7 +93,7 @@ export default function FavoriteButton({
               }
             : {})}
         >
-          {error || accountError}
+          {accountError}
         </Text>
       )}
     </Box>

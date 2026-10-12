@@ -1,4 +1,5 @@
 import { useAuth } from "@/components/ui/auth-provider";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import {
   Box,
@@ -22,7 +23,6 @@ export default function ReviewForm() {
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   useEffect(() => {
     if (!session) return;
     let active = true;
@@ -67,11 +67,6 @@ export default function ReviewForm() {
           {error}
         </Text>
       )}
-      {notice && (
-        <Text role="status" mb={3}>
-          {notice} <NextLink href="/account">View My Account</NextLink>.
-        </Text>
-      )}
       <Box
         as="form"
         onSubmit={async (e) => {
@@ -80,7 +75,6 @@ export default function ReviewForm() {
           const data = new FormData(form);
           setPending(true);
           setError("");
-          setNotice("");
           try {
             await accountRequest("/account/reviews", "POST", {
               slug: data.get("slug"),
@@ -90,10 +84,13 @@ export default function ReviewForm() {
               cons: data.get("cons"),
               recommendation: data.get("recommendation") || null,
             });
-            setNotice("Review submitted for approval.");
+            notifySuccess(
+              "Review submitted",
+              "Staff will review it before publication. Track its status in My Account.",
+            );
             form.reset();
           } catch (err) {
-            setError((err as Error).message);
+            notifyError("Could not submit review", err);
           } finally {
             setPending(false);
           }

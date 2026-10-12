@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { validateSlug } from "./catalog-slug.js";
 import type { AccountDependencies } from "./account.js";
 import { publishSuggestion } from "./publish-suggestion.js";
+import { validatePublication } from "./publication.js";
 import { validateHousingSubmission } from "./housing-submission.js";
 
 export function createStaffRouter(deps: AccountDependencies) {
@@ -68,15 +70,64 @@ export function createStaffRouter(deps: AccountDependencies) {
       ),
     );
   });
+  router.get("/apartments/:id", async (req, res) => {
+    const rows = await deps.query(
+      "SELECT * FROM apartment_submissions WHERE id = ? AND status = 'pending'",
+      [req.params.id],
+    );
+    if (!rows.length) {
+      res.status(404).json({
+        message: "This suggestion was already reviewed or no longer exists.",
+      });
+      return;
+    }
+    res.json(rows[0]);
+  });
   router.patch("/apartments/:id", async (req, res) => {
     if (!["approved", "rejected"].includes(req.body?.status)) {
       res.status(400).json({ message: "Choose approve or reject." });
       return;
     }
     if (req.body.status === "approved") {
-      const result = await deps.transaction((db) =>
-        publishSuggestion(db, String(req.params.id)),
-      );
+      const edits = req.body.edits;
+      if (edits !== undefined) {
+        try {
+          validatePublication(edits);
+          if (edits.slug !== undefined) validateSlug(edits.slug);
+        } catch (error) {
+          res.status(400).json({ message: (error as Error).message });
+          return;
+        }
+        if (edits.agency_id) {
+          const agencies = await deps.query(
+            "SELECT id FROM agencies WHERE id = ?",
+            [edits.agency_id],
+          );
+          if (!agencies.length) {
+            res.status(400).json({ message: "Choose an existing agency." });
+            return;
+          }
+        }
+      }
+      let result;
+      try {
+        result = await deps.transaction((db) =>
+          publishSuggestion(db, String(req.params.id), edits),
+        );
+      } catch (error) {
+        if (
+          (error as { code?: string }).code === "ER_DUP_ENTRY" ||
+          (error as Error).message.includes("URL slug")
+        ) {
+          res
+            .status(409)
+            .json({
+              message: "This URL slug is already in use. Choose another slug.",
+            });
+          return;
+        }
+        throw error;
+      }
       if (!result) {
         res.status(409).json({
           message: "Submission was already reviewed or no longer exists.",
@@ -116,7 +167,9 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.patch("/properties/:id", async (req, res) => {
     let property;
+    let slug: string;
     try {
+      slug = validateSlug(req.body?.slug);
       property = validateHousingSubmission({
         ...req.body,
         submission_kind: "property",
@@ -181,25 +234,51 @@ export function createStaffRouter(deps: AccountDependencies) {
         return;
       }
     }
-    const result = await deps.execute(
-      "UPDATE properties SET name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ? WHERE id = ?",
-      [
-        property.name,
-        property.address,
-        property.property_type,
-        property.website,
-        property.information,
-        property.agency_id,
-        req.body.address_line2.trim() || null,
-        req.body.city.trim(),
-        req.body.state.toUpperCase(),
-        req.body.postal_code.trim() || null,
-        latitude,
-        longitude,
-        req.body.phone.trim() || null,
-        req.params.id,
-      ],
+    const duplicates = await deps.query(
+      "SELECT id FROM properties WHERE slug = ? AND id <> ?",
+      [slug, req.params.id],
     );
+    if (duplicates.length) {
+      res
+        .status(409)
+        .json({
+          message: "This URL slug is already in use. Choose another slug.",
+        });
+      return;
+    }
+    let result;
+    try {
+      result = await deps.execute(
+        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ? WHERE id = ?",
+        [
+          slug,
+          property.name,
+          property.address,
+          property.property_type,
+          property.website,
+          property.information,
+          property.agency_id,
+          req.body.address_line2.trim() || null,
+          req.body.city.trim(),
+          req.body.state.toUpperCase(),
+          req.body.postal_code.trim() || null,
+          latitude,
+          longitude,
+          req.body.phone.trim() || null,
+          req.params.id,
+        ],
+      );
+    } catch (error) {
+      if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+        res
+          .status(409)
+          .json({
+            message: "This URL slug is already in use. Choose another slug.",
+          });
+        return;
+      }
+      throw error;
+    }
     if (!result.affectedRows) {
       res.status(404).json({ message: "Property not found." });
       return;

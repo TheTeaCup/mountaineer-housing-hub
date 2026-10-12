@@ -2,6 +2,7 @@ import FavoriteButton from "@/components/properties/favorite-button";
 import PropertyPhoto from "@/components/properties/photo";
 import PropertyReviews from "@/components/properties/reviews";
 import SEO from "@/components/seo";
+import { useAccount } from "@/components/ui/account-provider";
 import type { Property } from "@/types/properties";
 import {
   fetchProperty,
@@ -25,6 +26,7 @@ import { useEffect, useState } from "react";
 
 export default function PropertyPage() {
   const router = useRouter();
+  const { profile } = useAccount();
   const slug = typeof router.query.slug === "string" ? router.query.slug : "";
   const [result, setResult] = useState<{
     slug: string;
@@ -76,6 +78,13 @@ export default function PropertyPage() {
               <Heading as="h1" mt={6} mb={3}>
                 {property.name}
               </Heading>
+              {profile?.role === "staff" && (
+                <NextLink href={`/staff/properties/${property.id}`}>
+                  <Button variant="outline" mb={4}>
+                    Edit property
+                  </Button>
+                </NextLink>
+              )}
               <Text textTransform="capitalize">
                 {propertyTypeLabel(property.property_type)}
               </Text>

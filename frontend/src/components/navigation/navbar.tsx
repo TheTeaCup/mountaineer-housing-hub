@@ -1,6 +1,7 @@
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { ColorModeButton } from "@/components/ui/color-mode";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import UserAvatar from "@/components/ui/user-avatar";
 import { Box, Button, Flex, Menu, Portal, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
@@ -13,7 +14,6 @@ export default function NavBar() {
   const { session, loading, logout } = useAuth();
   const { profile } = useAccount();
   const [signingOut, setSigningOut] = useState(false);
-  const [authError, setAuthError] = useState("");
   const navItems = [
     { label: "Properties", href: "/properties" },
     { label: "Map", href: "/map" },
@@ -217,13 +217,11 @@ export default function NavBar() {
                         value="logout"
                         onSelect={async () => {
                           setSigningOut(true);
-                          setAuthError("");
                           try {
                             await logout();
-                          } catch {
-                            setAuthError(
-                              "Could not sign out. Please try again.",
-                            );
+                            notifySuccess("Signed out");
+                          } catch (err) {
+                            notifyError("Could not sign out", err);
                           } finally {
                             setSigningOut(false);
                           }
@@ -240,11 +238,6 @@ export default function NavBar() {
           </Menu.Root>
         </Flex>
       </Flex>
-      {authError && (
-        <Text role="alert" fontSize="sm" maxW="1200px" mx="auto" mt={3}>
-          {authError}
-        </Text>
-      )}
     </Box>
   );
 }

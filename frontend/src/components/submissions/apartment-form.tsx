@@ -1,4 +1,5 @@
 import { useAuth } from "@/components/ui/auth-provider";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import {
   Box,
@@ -30,7 +31,6 @@ export default function ApartmentForm() {
   const [agencies, setAgencies] = useState<{ id: number; name: string }[]>([]);
   const [agencyError, setAgencyError] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const confirmation = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -79,11 +79,6 @@ export default function ApartmentForm() {
         several different properties. Staff will verify your suggestion before
         it is added.
       </Text>
-      {error && (
-        <Text role="alert" color="fg.error" mb={3}>
-          {error}
-        </Text>
-      )}
       {notice && (
         <Box
           ref={confirmation}
@@ -115,7 +110,6 @@ export default function ApartmentForm() {
           const form = e.currentTarget as unknown as HTMLFormElement;
           const data = new FormData(form);
           setPending(true);
-          setError("");
           setNotice("");
           try {
             await accountRequest("/account/apartments", "POST", {
@@ -142,10 +136,14 @@ export default function ApartmentForm() {
             setNotice(
               `Your suggestion for ${String(data.get("name"))} was submitted for staff review.`,
             );
+            notifySuccess(
+              "Suggestion received",
+              "Staff will verify it before publication.",
+            );
             form.reset();
             setManager("unknown");
           } catch (err) {
-            setError((err as Error).message);
+            notifyError("Could not submit suggestion", err);
           } finally {
             setPending(false);
           }
@@ -161,7 +159,6 @@ export default function ApartmentForm() {
                 onChange={(e) => {
                   setKind(e.target.value);
                   setManager("unknown");
-                  setError("");
                   setNotice("");
                 }}
               >
