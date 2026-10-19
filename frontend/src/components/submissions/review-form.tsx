@@ -1,6 +1,7 @@
 import { useAuth } from "@/components/ui/auth-provider";
+import SignInRequired from "@/components/ui/sign-in-required";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
-import { accountRequest } from "@/utils/api/account";
+import { accountFormRequest, accountRequest } from "@/utils/api/account";
 import {
   Box,
   Button,
@@ -14,6 +15,8 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useEffect, useState } from "react";
+import ReviewPhotoPicker from "./review-photo-picker";
+import StarRating from "./star-rating";
 
 export default function ReviewForm() {
   const { session, loading } = useAuth();
@@ -22,6 +25,9 @@ export default function ReviewForm() {
   >([]);
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [pending, setPending] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [compressingPhotos, setCompressingPhotos] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!session) return;
@@ -45,12 +51,10 @@ export default function ReviewForm() {
   if (loading) return <Text>Loading…</Text>;
   if (!session)
     return (
-      <Text>
-        <NextLink href="/auth/login">
-          Sign in with your App State account
-        </NextLink>{" "}
-        to submit a review or suggest an apartment.
-      </Text>
+      <SignInRequired
+        title="Sign in to share your experience"
+        description="Use your App State account to submit an apartment review or suggest a missing property. Your identity is not displayed with published reviews."
+      />
     );
   return (
     <>
@@ -78,19 +82,15 @@ export default function ReviewForm() {
           setPending(true);
           setError("");
           try {
-            await accountRequest("/account/reviews", "POST", {
-              slug: data.get("slug"),
-              rating: Number(data.get("rating")),
-              body: data.get("body"),
-              pros: data.get("pros"),
-              cons: data.get("cons"),
-              recommendation: data.get("recommendation") || null,
-            });
+            photos.forEach((photo) => data.append("photos", photo, photo.name));
+            await accountFormRequest("/account/reviews", data);
             notifySuccess(
               "Review submitted",
               "Staff will review it before publication. Track its status in My Account.",
             );
             form.reset();
+            setRating(0);
+            setPhotos([]);
           } catch (err) {
             notifyError("Could not submit review", err);
           } finally {
@@ -133,16 +133,7 @@ export default function ReviewForm() {
             <Field.Label>
               Overall rating <Field.RequiredIndicator />
             </Field.Label>
-            <NativeSelect.Root>
-              <NativeSelect.Field name="rating" placeholder="Select a rating">
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={value}>
-                    {value}/5
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator color="var(--site-muted)" />
-            </NativeSelect.Root>
+            <StarRating value={rating} onChange={setRating} />
           </Field.Root>
           <Field.Root required>
             <Field.Label>
@@ -178,19 +169,29 @@ export default function ReviewForm() {
               <NativeSelect.Indicator color="var(--site-muted)" />
             </NativeSelect.Root>
           </Field.Root>
+          <ReviewPhotoPicker
+            photos={photos}
+            onChange={setPhotos}
+            onProcessingChange={setCompressingPhotos}
+          />
           <Text fontSize="sm" color="var(--site-muted)">
-            Photo uploads are not available yet. Submit text only for now. Do
-            not include private contact details or other sensitive information.
+            Staff review all text and photos before publication. Do not include
+            private contact details or other sensitive information.
           </Text>
           <Button
             type="submit"
             loading={pending}
-            disabled={propertiesLoading || !properties.length}
+            disabled={
+              propertiesLoading ||
+              !properties.length ||
+              compressingPhotos ||
+              rating === 0
+            }
             bg="#ffc72c"
             color="#111111"
             alignSelf="flex-start"
           >
-            Submit review
+            {compressingPhotos ? "Compressing photos…" : "Submit review"}
           </Button>
         </Stack>
       </Box>

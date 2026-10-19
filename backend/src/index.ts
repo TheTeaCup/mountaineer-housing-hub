@@ -17,6 +17,8 @@ import { generateUniqueUsername } from "./utils/generateUsername.js";
 import { isVerifiedAppStateUser } from "./auth/policy.js";
 import { verifiedProxyClientIp } from "./utils/proxyClientIp.js";
 import { db } from "./db/connections.js";
+import { createReviewPhotoRouter } from "./routes/review-photos.js";
+import { createPropertyPhotoRouter } from "./routes/property-photos.js";
 
 async function startServer() {
   const app = express();
@@ -105,6 +107,7 @@ async function startServer() {
   app.use(bodyParser.json());
   const accountDependencies = {
     frontendOrigin: new URL(config.FRONTEND_URL).origin,
+    backendOrigin: new URL(config.BETTER_AUTH_URL).origin,
     getUser: async (headers: Record<string, unknown>) => {
       const session = await auth.api.getSession({
         headers: fromNodeHeaders(
@@ -124,6 +127,8 @@ async function startServer() {
     ensureProfile: ensureAuthProfile,
     generateUsername: generateUniqueUsername,
   };
+  app.use("/property-photos", createPropertyPhotoRouter(accountDependencies));
+  app.use("/review-photos", createReviewPhotoRouter(accountDependencies));
   app.use("/account", createAccountRouter(accountDependencies));
   app.use("/staff", createStaffRouter(accountDependencies));
 

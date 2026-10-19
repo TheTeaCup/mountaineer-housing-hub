@@ -16,6 +16,7 @@ export default function NavBar() {
   const [signingOut, setSigningOut] = useState(false);
   const navItems = [
     { label: "Properties", href: "/properties" },
+    { label: "Agencies", href: "/agencies" },
     { label: "Map", href: "/map" },
     { label: "Submit", href: "/submit" },
   ];
@@ -34,7 +35,7 @@ export default function NavBar() {
         maxW="1200px"
         mx="auto"
         align="center"
-        justify="space-between"
+        justify={{ base: "center", md: "space-between" }}
         gap={{ base: 4, md: 6 }}
         flexWrap="wrap"
       >
@@ -53,10 +54,11 @@ export default function NavBar() {
         <Flex
           as="nav"
           aria-label="Main navigation"
-          gap={{ base: 4, md: 6 }}
+          gap={{ base: 2, md: 6 }}
           align="center"
           justify="space-between"
           w={{ base: "100%", md: "auto" }}
+          flexWrap={{ base: "wrap", md: "nowrap" }}
         >
           {navItems.map((item) => {
             const isActive =

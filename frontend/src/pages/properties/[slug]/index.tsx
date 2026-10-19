@@ -10,6 +10,7 @@ import {
   propertyTypeLabel,
   safeUrl,
 } from "@/utils/api/properties";
+import { formatPhoneNumber, phoneHref } from "@/utils/format-phone";
 import {
   Box,
   Button,
@@ -52,6 +53,8 @@ export default function PropertyPage() {
   const error = result.slug === slug ? result.error : "";
   const website = safeUrl(property?.website_url);
   const agencyWebsite = safeUrl(property?.agency?.website_url);
+  const propertyPhoneDigits = property?.phone?.replace(/\D/g, "");
+  const agencyPhoneDigits = property?.agency?.phone?.replace(/\D/g, "");
   const hasCoordinates =
     property?.latitude !== null && property?.longitude !== null;
   return (
@@ -172,7 +175,12 @@ export default function PropertyPage() {
                     Interested in this property?
                   </Heading>
                   {property.agency && (
-                    <Text mb={4}>Managed by {property.agency.name}</Text>
+                    <Text mb={4}>
+                      Managed by{" "}
+                      <NextLink href={`/agencies/${property.agency.slug}`}>
+                        {property.agency.name}
+                      </NextLink>
+                    </Text>
                   )}
                   <Stack gap={4}>
                     <FavoriteButton slug={property.slug} />
@@ -196,7 +204,23 @@ export default function PropertyPage() {
                         </Button>
                       </a>
                     )}
-                    {property.phone && <Text>Phone: {property.phone}</Text>}
+                    {property.agency?.phone &&
+                      agencyPhoneDigits !== propertyPhoneDigits && (
+                        <Text>
+                          Agency phone:{" "}
+                          <a href={phoneHref(property.agency.phone)}>
+                            {formatPhoneNumber(property.agency.phone)}
+                          </a>
+                        </Text>
+                      )}
+                    {property.phone && (
+                      <Text>
+                        Phone:{" "}
+                        <a href={phoneHref(property.phone)}>
+                          {formatPhoneNumber(property.phone)}
+                        </a>
+                      </Text>
+                    )}
                     {hasCoordinates && (
                       <NextLink
                         href={`/map?property=${encodeURIComponent(property.slug)}`}

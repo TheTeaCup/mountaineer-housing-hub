@@ -1,8 +1,12 @@
 import SEO from "@/components/seo";
+import PropertyPhotoManager, {
+  type StaffPropertyPhoto,
+} from "@/components/staff/property-photo-manager";
 import { useAccount } from "@/components/ui/account-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import { propertyTypeLabel } from "@/utils/api/properties";
+import { formatPhoneNumber } from "@/utils/format-phone";
 import {
   Box,
   Button,
@@ -38,6 +42,7 @@ interface PropertyForm {
   latitude: string | number | null;
   longitude: string | number | null;
   phone: string | null;
+  photos: StaffPropertyPhoto[];
 }
 const fields = [
   ["name", "Property / community name", 255],
@@ -86,6 +91,7 @@ export default function EditProperty({
                 "listing"),
             city: property.city ?? "Boone",
             state: property.state ?? "NC",
+            photos: property.photos ?? [],
           });
           setAgencies(agencies);
         }
@@ -211,7 +217,7 @@ export default function EditProperty({
                 .filter(
                   ([name]) =>
                     property.submission_kind !== "agency" ||
-                    ["name", "website"].includes(name),
+                    ["name", "website", "phone"].includes(name),
                 )
                 .map(([name, label, max]) => (
                   <Field.Root
@@ -227,7 +233,11 @@ export default function EditProperty({
                     </Field.Label>
                     <Input
                       name={name}
-                      defaultValue={property[name] ?? ""}
+                      defaultValue={
+                        name === "phone"
+                          ? formatPhoneNumber(property.phone)
+                          : (property[name] ?? "")
+                      }
                       maxLength={max}
                       required={["name", "address", "city", "state"].includes(
                         name,
@@ -235,13 +245,25 @@ export default function EditProperty({
                       type={
                         name === "website"
                           ? "url"
-                          : ["latitude", "longitude"].includes(name)
-                            ? "number"
-                            : "text"
+                          : name === "phone"
+                            ? "tel"
+                            : ["latitude", "longitude"].includes(name)
+                              ? "number"
+                              : "text"
                       }
                       step={
                         ["latitude", "longitude"].includes(name)
                           ? "any"
+                          : undefined
+                      }
+                      inputMode={name === "phone" ? "tel" : undefined}
+                      onBlur={
+                        name === "phone"
+                          ? (event) => {
+                              event.currentTarget.value = formatPhoneNumber(
+                                event.currentTarget.value,
+                              );
+                            }
                           : undefined
                       }
                       min={
@@ -354,6 +376,17 @@ export default function EditProperty({
                   ? "Approve and publish edited suggestion"
                   : "Save property"}
               </Button>
+              {!suggestion && (
+                <PropertyPhotoManager
+                  propertyId={property.id}
+                  photos={property.photos}
+                  onChange={(photos) =>
+                    setProperty((current) =>
+                      current ? { ...current, photos } : current,
+                    )
+                  }
+                />
+              )}
             </Stack>
           </Box>
         )}

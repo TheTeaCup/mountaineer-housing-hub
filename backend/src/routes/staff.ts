@@ -1,9 +1,21 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
+import {
+  imageExtension,
+  imageType,
+  imageUpload,
+} from "../middleware/image-upload.js";
+import { deleteImages, uploadImage } from "../storage/images.js";
+import { normalizeUsPhone } from "../utils/phone.js";
 import { validateSlug } from "./catalog-slug.js";
 import type { AccountDependencies } from "./account.js";
 import { publishSuggestion } from "./publish-suggestion.js";
 import { validatePublication } from "./publication.js";
 import { validateHousingSubmission } from "./housing-submission.js";
+import { attachReviewPhotos } from "./review-photos.js";
+import { propertyPhotos } from "./property-photos.js";
+
+const MAX_PROPERTY_PHOTOS = 10;
 
 export function createStaffRouter(deps: AccountDependencies) {
   const router = Router();
@@ -40,11 +52,10 @@ export function createStaffRouter(deps: AccountDependencies) {
     res.json({ users: rows, total: count[0]?.total ?? 0 });
   });
   router.get("/reviews", async (_req, res) => {
-    res.json(
-      await deps.query(
-        "SELECT r.id, r.rating, r.body, r.pros, r.cons, r.recommendation, r.created_at, p.name, u.username FROM reviews r JOIN properties p ON p.id = r.property_id LEFT JOIN user_profiles u ON u.user_id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at LIMIT 100",
-      ),
+    const reviews = await deps.query<{ id: number } & Record<string, unknown>>(
+      "SELECT r.id, r.rating, r.body, r.pros, r.cons, r.recommendation, r.created_at, p.name, u.username FROM reviews r JOIN properties p ON p.id = r.property_id LEFT JOIN user_profiles u ON u.user_id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at LIMIT 100",
     );
+    res.json(await attachReviewPhotos(deps, reviews, deps.backendOrigin));
   });
   router.patch("/reviews/:id", async (req, res) => {
     if (!["published", "rejected"].includes(req.body?.status)) {
@@ -69,6 +80,109 @@ export function createStaffRouter(deps: AccountDependencies) {
         "SELECT s.id, s.name, s.address, s.website, s.information, s.submission_kind, s.property_type, s.agency_id, a.name AS agency_name, s.proposed_agency_name, s.proposed_agency_website, s.created_at, p.username FROM apartment_submissions s LEFT JOIN user_profiles p ON p.user_id = s.user_id LEFT JOIN agencies a ON a.id = s.agency_id WHERE s.status = 'pending' ORDER BY s.created_at LIMIT 100",
       ),
     );
+  });
+  router.get("/agencies", async (_req, res) => {
+    res.json(
+      await deps.query(
+        `SELECT a.id, a.name, a.slug, a.website_url AS website, a.phone, a.email,
+         a.description AS information, a.updated_at,
+         COUNT(p.id) AS property_count,
+         COUNT(CASE WHEN p.status = 'published' THEN 1 END) AS published_property_count
+         FROM agencies a
+         LEFT JOIN properties p ON p.agency_id = a.id
+         GROUP BY a.id, a.name, a.slug, a.website_url, a.phone, a.email, a.description, a.updated_at
+         ORDER BY a.name LIMIT 500`,
+      ),
+    );
+  });
+  router.get("/agencies/:id", async (req, res) => {
+    const rows = await deps.query(
+      "SELECT id, name, slug, website_url AS website, phone, email, description AS information FROM agencies WHERE id = ?",
+      [req.params.id],
+    );
+    if (!rows.length) {
+      res.status(404).json({ message: "Rental agency not found." });
+      return;
+    }
+    res.json(rows[0]);
+  });
+  router.patch("/agencies/:id", async (req, res) => {
+    const { name, website, information, email } = req.body ?? {};
+    let slug: string;
+    let phone: string | null;
+    try {
+      slug = validateSlug(req.body?.slug);
+      phone = normalizeUsPhone(req.body?.phone);
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
+    }
+    if (typeof name !== "string" || !name.trim() || name.length > 255) {
+      res.status(400).json({ message: "Enter a rental agency name." });
+      return;
+    }
+    let websiteValue: string | null = null;
+    if (website !== undefined && website !== null && website !== "") {
+      if (typeof website !== "string" || website.length > 2048) {
+        res.status(400).json({ message: "Enter a valid agency website." });
+        return;
+      }
+      try {
+        const parsed = new URL(website);
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
+        websiteValue = parsed.href;
+      } catch {
+        res
+          .status(400)
+          .json({ message: "Enter a valid http or https website." });
+        return;
+      }
+    }
+    const description =
+      typeof information === "string" && information.length <= 10000
+        ? information.trim() || null
+        : undefined;
+    if (description === undefined) {
+      res.status(400).json({ message: "Description is too long." });
+      return;
+    }
+    const emailValue =
+      typeof email === "string" && email.trim() ? email.trim() : null;
+    if (
+      emailValue &&
+      (emailValue.length > 255 ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue))
+    ) {
+      res.status(400).json({ message: "Enter a valid email address." });
+      return;
+    }
+    const duplicates = await deps.query(
+      "SELECT id FROM agencies WHERE slug = ? AND id <> ?",
+      [slug, req.params.id],
+    );
+    if (duplicates.length) {
+      res
+        .status(409)
+        .json({ message: "This agency URL slug is already in use." });
+      return;
+    }
+    const result = await deps.execute(
+      "UPDATE agencies SET name = ?, slug = ?, website_url = ?, phone = ?, email = ?, description = ? WHERE id = ?",
+      [
+        name.trim(),
+        slug,
+        websiteValue,
+        phone,
+        emailValue,
+        description,
+        req.params.id,
+      ],
+    );
+    if (!result.affectedRows) {
+      res.status(404).json({ message: "Rental agency not found." });
+      return;
+    }
+    res.json({ updated: true });
   });
   router.get("/apartments/:id", async (req, res) => {
     const rows = await deps.query(
@@ -119,11 +233,9 @@ export function createStaffRouter(deps: AccountDependencies) {
           (error as { code?: string }).code === "ER_DUP_ENTRY" ||
           (error as Error).message.includes("URL slug")
         ) {
-          res
-            .status(409)
-            .json({
-              message: "This URL slug is already in use. Choose another slug.",
-            });
+          res.status(409).json({
+            message: "This URL slug is already in use. Choose another slug.",
+          });
           return;
         }
         throw error;
@@ -155,7 +267,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     );
   });
   router.get("/properties/:id", async (req, res) => {
-    const rows = await deps.query(
+    const rows = await deps.query<{ id: number } & Record<string, unknown>>(
       "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone FROM properties WHERE id = ?",
       [req.params.id],
     );
@@ -163,7 +275,107 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(404).json({ message: "Property not found." });
       return;
     }
-    res.json(rows[0]);
+    res.json({
+      ...rows[0],
+      photos: await propertyPhotos(deps, rows[0].id, deps.backendOrigin),
+    });
+  });
+  router.post(
+    "/properties/:id/photos",
+    imageUpload("photos", MAX_PROPERTY_PHOTOS),
+    async (req, res) => {
+      const propertyId = Number(req.params.id);
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      if (!Number.isInteger(propertyId) || propertyId < 1 || !files.length) {
+        res.status(400).json({ message: "Choose at least one photo." });
+        return;
+      }
+      const properties = await deps.query<{ id: number; name: string }>(
+        "SELECT id, name FROM properties WHERE id = ?",
+        [propertyId],
+      );
+      if (!properties[0]) {
+        res.status(404).json({ message: "Property not found." });
+        return;
+      }
+      const counts = await deps.query<{ total: number; next_order: number }>(
+        "SELECT COUNT(*) AS total, COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM property_photos WHERE property_id = ?",
+        [propertyId],
+      );
+      const currentCount = Number(counts[0]?.total ?? 0);
+      if (currentCount + files.length > MAX_PROPERTY_PHOTOS) {
+        res.status(400).json({
+          message: `A property can have up to ${MAX_PROPERTY_PHOTOS} photos.`,
+        });
+        return;
+      }
+      const types = files.map((file) => imageType(file.buffer));
+      if (types.some((type) => type === null)) {
+        res.status(400).json({
+          message: "Photos must be JPEG, PNG, or WebP images.",
+        });
+        return;
+      }
+
+      const uploadedKeys: string[] = [];
+      const insertedIds: number[] = [];
+      try {
+        const startOrder = Number(counts[0]?.next_order ?? 0);
+        for (let index = 0; index < files.length; index++) {
+          const contentType = types[index]!;
+          const key = `property-photos/${propertyId}/${randomUUID()}.${imageExtension(contentType)}`;
+          await uploadImage(key, files[index].buffer, contentType);
+          uploadedKeys.push(key);
+          const result = await deps.execute(
+            "INSERT INTO property_photos (property_id, image_url, alt_text, sort_order) VALUES (?, ?, ?, ?)",
+            [
+              propertyId,
+              key,
+              `${properties[0].name} property photo`,
+              startOrder + index,
+            ],
+          );
+          if (result.insertId) insertedIds.push(result.insertId);
+        }
+        await deps.execute(
+          "UPDATE properties SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
+          [propertyId],
+        );
+        res.status(201).json({
+          photos: await propertyPhotos(deps, propertyId, deps.backendOrigin),
+        });
+      } catch (error) {
+        await deleteImages(uploadedKeys);
+        if (insertedIds.length) {
+          await deps.execute(
+            `DELETE FROM property_photos WHERE id IN (${insertedIds.map(() => "?").join(",")})`,
+            insertedIds,
+          );
+        }
+        throw error;
+      }
+    },
+  );
+  router.delete("/properties/:id/photos/:photoId", async (req, res) => {
+    const rows = await deps.query<{ id: number; image_url: string }>(
+      "SELECT id, image_url FROM property_photos WHERE id = ? AND property_id = ?",
+      [req.params.photoId, req.params.id],
+    );
+    if (!rows[0]) {
+      res.status(404).json({ message: "Photo not found." });
+      return;
+    }
+    await deps.execute("DELETE FROM property_photos WHERE id = ?", [
+      rows[0].id,
+    ]);
+    if (rows[0].image_url.startsWith("property-photos/")) {
+      await deleteImages([rows[0].image_url]);
+    }
+    await deps.execute(
+      "UPDATE properties SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
+      [req.params.id],
+    );
+    res.json({ deleted: true });
   });
   router.patch("/properties/:id", async (req, res) => {
     let property;
@@ -224,6 +436,13 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(400).json({ message: "Use a two-letter state code." });
       return;
     }
+    let phone: string | null;
+    try {
+      phone = normalizeUsPhone(req.body.phone);
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
+    }
     if (property.agency_id) {
       const agencies = await deps.query(
         "SELECT id FROM agencies WHERE id = ?",
@@ -239,11 +458,9 @@ export function createStaffRouter(deps: AccountDependencies) {
       [slug, req.params.id],
     );
     if (duplicates.length) {
-      res
-        .status(409)
-        .json({
-          message: "This URL slug is already in use. Choose another slug.",
-        });
+      res.status(409).json({
+        message: "This URL slug is already in use. Choose another slug.",
+      });
       return;
     }
     let result;
@@ -264,17 +481,15 @@ export function createStaffRouter(deps: AccountDependencies) {
           req.body.postal_code.trim() || null,
           latitude,
           longitude,
-          req.body.phone.trim() || null,
+          phone,
           req.params.id,
         ],
       );
     } catch (error) {
       if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
-        res
-          .status(409)
-          .json({
-            message: "This URL slug is already in use. Choose another slug.",
-          });
+        res.status(409).json({
+          message: "This URL slug is already in use. Choose another slug.",
+        });
         return;
       }
       throw error;

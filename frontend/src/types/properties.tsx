@@ -19,7 +19,13 @@ export interface Property {
   longitude: number | null;
   website_url: string | null;
   phone: string | null;
-  agency: { id: number; name: string; website_url: string | null } | null;
+  agency: {
+    id: number;
+    name: string;
+    slug: string;
+    website_url: string | null;
+    phone: string | null;
+  } | null;
   review_count: number;
   average_rating: number | null;
   floor_plans: FloorPlan[];

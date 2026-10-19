@@ -39,8 +39,9 @@ export default function PrivacyPolicy() {
         <Text>
           When you submit content, we collect your review, rating,
           recommendation, apartment suggestions, and related account
-          information. We store your saved apartments privately. Photo uploads
-          are not currently available.
+          information. We store your saved apartments privately. Review photos
+          are resized and compressed in your browser before upload, then stored
+          with the review for moderation and publication.
         </Text>
       </LegalSection>
       <LegalSection title="3. How we use information">

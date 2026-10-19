@@ -1,8 +1,12 @@
+import ReviewPhotoGrid, {
+  type ReviewPhoto,
+} from "@/components/properties/review-photo-grid";
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
+import { formatPhoneNumber } from "@/utils/format-phone";
 import {
   Box,
   Button,
@@ -24,6 +28,7 @@ interface StaffReview {
   pros: string | null;
   cons: string | null;
   recommendation: string | null;
+  photos: ReviewPhoto[];
 }
 interface ApartmentSubmission {
   id: number;
@@ -38,6 +43,16 @@ interface ApartmentSubmission {
   website: string | null;
   information: string | null;
 }
+interface RentalAgency {
+  id: number;
+  name: string;
+  slug: string;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  property_count: number;
+  published_property_count: number;
+}
 interface SiteUser {
   id: number;
   username: string | null;
@@ -51,7 +66,7 @@ interface SiteUser {
 export default function StaffDashboard({
   section,
 }: {
-  section: "reviews" | "apartments" | "users";
+  section: "reviews" | "apartments" | "agencies" | "users";
 }) {
   const { session, loading } = useAuth();
   const { profile, error: profileError } = useAccount();
@@ -59,11 +74,14 @@ export default function StaffDashboard({
   const title =
     section === "users"
       ? "Registered users"
-      : section === "apartments"
-        ? "Apartment submissions"
-        : "Review submissions";
+      : section === "agencies"
+        ? "Rental agencies"
+        : section === "apartments"
+          ? "Apartment submissions"
+          : "Review submissions";
   const [reviews, setReviews] = useState<StaffReview[]>([]);
   const [apartments, setApartments] = useState<ApartmentSubmission[]>([]);
+  const [agencies, setAgencies] = useState<RentalAgency[]>([]);
   const [properties, setProperties] = useState<{ id: number; name: string }[]>(
     [],
   );
@@ -96,6 +114,9 @@ export default function StaffDashboard({
             setApartments(data);
             setProperties(listings);
           }
+        } else if (tab === "agencies") {
+          const data = await accountRequest<RentalAgency[]>("/staff/agencies");
+          if (active) setAgencies(data);
         } else {
           const data = await accountRequest<{
             users: SiteUser[];
@@ -178,8 +199,8 @@ export default function StaffDashboard({
           ) : (
             <>
               <Text mb={5}>
-                Review submissions and view registered users. Account
-                information is for site administration only.
+                Review submissions and manage catalog records or registered
+                users. Account information is for site administration only.
               </Text>
               <Flex gap={3} mb={6} flexWrap="wrap">
                 <Button
@@ -231,6 +252,7 @@ export default function StaffDashboard({
                           Recommendation: {review.recommendation}
                         </Text>
                       )}
+                      <ReviewPhotoGrid photos={review.photos} />
                       <Flex gap={3} mt={4}>
                         <Button
                           disabled={pending !== null}
@@ -334,6 +356,57 @@ export default function StaffDashboard({
                     <Box {...panel} key={property.id}>
                       <NextLink href={`/staff/properties/${property.id}`}>
                         {property.name} — Edit details and coordinates →
+                      </NextLink>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : tab === "agencies" ? (
+                <Stack gap={4}>
+                  <Heading as="h2" size="lg">
+                    Rental agencies
+                  </Heading>
+                  <Text fontSize="sm">
+                    Agencies are management companies, not property or community
+                    names. Only agencies with at least one published property
+                    appear in the public directory.
+                  </Text>
+                  {!agencies.length && (
+                    <Text>No rental agencies are in the catalog yet.</Text>
+                  )}
+                  {agencies.map((agency) => (
+                    <Box {...panel} key={agency.id}>
+                      <Heading as="h3" size="md">
+                        {agency.name}
+                      </Heading>
+                      <Text color="var(--site-muted)" my={2}>
+                        {formatPhoneNumber(agency.phone) ||
+                          agency.email ||
+                          "No contact details"}
+                      </Text>
+                      <Text mb={2}>
+                        {agency.property_count}{" "}
+                        {agency.property_count === 1
+                          ? "property"
+                          : "properties"}
+                        {agency.published_property_count !==
+                        agency.property_count
+                          ? ` · ${agency.published_property_count} published`
+                          : ""}
+                      </Text>
+                      {agency.property_count === 0 && (
+                        <Text color="fg.warning" mb={2}>
+                          Hidden publicly because no properties are linked. If
+                          this is a property name, keep it as a property record
+                          instead of an agency.
+                        </Text>
+                      )}
+                      {agency.website && (
+                        <Text overflowWrap="anywhere" mb={3}>
+                          {agency.website}
+                        </Text>
+                      )}
+                      <NextLink href={`/staff/agencies/${agency.id}`}>
+                        Edit agency details →
                       </NextLink>
                     </Box>
                   ))}

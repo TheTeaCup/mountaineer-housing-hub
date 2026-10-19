@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { propertyPhotoUrl } from "./property-photos.js";
 
 export interface PropertyRow {
   id: number;
@@ -17,7 +18,9 @@ export interface PropertyRow {
   phone: string | null;
   agency_id: number | null;
   agency_name: string | null;
+  agency_slug: string | null;
   agency_website: string | null;
+  agency_phone: string | null;
   review_count: number | string;
   average_rating: number | string | null;
 }
@@ -33,6 +36,7 @@ export interface FloorPlanRow {
   rent_basis: string;
 }
 interface PhotoRow {
+  id: number;
   property_id: number;
   image_url: string;
   alt_text: string | null;
@@ -44,6 +48,7 @@ export function publicProperty(
   row: PropertyRow,
   plans: FloorPlanRow[],
   photos: PhotoRow[],
+  backendOrigin: string,
 ) {
   return {
     id: row.id,
@@ -70,7 +75,9 @@ export function publicProperty(
         : {
             id: row.agency_id,
             name: row.agency_name,
+            slug: row.agency_slug,
             website_url: row.agency_website,
+            phone: row.agency_phone,
           },
     review_count: Number(row.review_count),
     average_rating: numberOrNull(row.average_rating),
@@ -85,7 +92,7 @@ export function publicProperty(
       rent_basis: plan.rent_basis,
     })),
     photos: photos.map((photo) => ({
-      image_url: photo.image_url,
+      image_url: propertyPhotoUrl(photo, backendOrigin),
       alt_text: photo.alt_text,
     })),
   };
@@ -93,12 +100,13 @@ export function publicProperty(
 
 export function createPropertiesRouter(
   query: <T>(sql: string, params?: unknown[]) => Promise<T[]>,
+  backendOrigin: string,
 ) {
   const router = Router();
   const select = `SELECT p.id, p.name, p.slug, p.property_type, p.description,
     p.address_line1, p.address_line2, p.city, p.state, p.postal_code,
     p.latitude, p.longitude, p.website_url, p.phone,
-    p.agency_id, a.name AS agency_name, a.website_url AS agency_website,
+    p.agency_id, a.name AS agency_name, a.slug AS agency_slug, a.website_url AS agency_website, a.phone AS agency_phone,
     COALESCE(r.review_count, 0) AS review_count, r.average_rating
     FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id
     LEFT JOIN (SELECT property_id, COUNT(*) AS review_count, AVG(rating) AS average_rating
@@ -114,7 +122,7 @@ export function createPropertiesRouter(
         ids,
       ),
       query<PhotoRow>(
-        `SELECT property_id, image_url, alt_text FROM property_photos WHERE property_id IN (${placeholders}) ORDER BY sort_order, id`,
+        `SELECT id, property_id, image_url, alt_text FROM property_photos WHERE property_id IN (${placeholders}) ORDER BY sort_order, id`,
         ids,
       ),
     ]);
@@ -123,6 +131,7 @@ export function createPropertiesRouter(
         row,
         plans.filter((plan) => plan.property_id === row.id),
         photos.filter((photo) => photo.property_id === row.id),
+        backendOrigin,
       ),
     );
   }

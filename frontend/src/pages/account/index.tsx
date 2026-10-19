@@ -1,4 +1,5 @@
 import FavoriteButton from "@/components/properties/favorite-button";
+import ReviewPhotoGrid from "@/components/properties/review-photo-grid";
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
@@ -106,6 +107,7 @@ function ReviewEditor({
       ) : (
         <>
           <Text whiteSpace="pre-wrap">{review.body}</Text>
+          <ReviewPhotoGrid photos={review.photos} />
           <Flex gap={3} mt={3}>
             <Button
               variant="outline"

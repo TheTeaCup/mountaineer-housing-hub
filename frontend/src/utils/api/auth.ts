@@ -1,5 +1,25 @@
+const LOCAL_API_URL = "http://localhost:3001";
+const PRODUCTION_API_URL = "https://api-mtn-housing-hub.theteacup.dev";
+
+function isLoopbackUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+const configuredApiUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production" ? PRODUCTION_API_URL : LOCAL_API_URL);
+
+// NEXT_PUBLIC_* values are embedded by `next build`. Guard against a local
+// .env accidentally baking localhost into a production deployment.
 export const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+  process.env.NODE_ENV === "production" && isLoopbackUrl(configuredApiUrl)
+    ? PRODUCTION_API_URL
+    : configuredApiUrl
 ).replace(/\/$/, "");
 
 export interface AuthSession {

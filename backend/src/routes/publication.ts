@@ -1,4 +1,5 @@
 import { validateHousingSubmission } from "./housing-submission.js";
+import { normalizeUsPhone } from "../utils/phone.js";
 
 export function validatePublication(input: Record<string, unknown>) {
   const submission = validateHousingSubmission(input);
@@ -38,5 +39,6 @@ export function validatePublication(input: Record<string, unknown>) {
   if (!/^[A-Za-z]{2}$/.test(details.state!))
     throw new Error("Use a two-letter state code.");
   details.state = details.state!.toUpperCase();
+  details.phone = normalizeUsPhone(details.phone);
   return { submission, details, latitude, longitude };
 }

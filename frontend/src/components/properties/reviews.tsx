@@ -2,6 +2,7 @@ import UserAvatar from "@/components/ui/user-avatar";
 import { accountRequest, type AccountProfile } from "@/utils/api/account";
 import { Box, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
+import ReviewPhotoGrid, { type ReviewPhoto } from "./review-photo-grid";
 
 export default function PropertyReviews({ slug }: { slug: string }) {
   const [reviews, setReviews] = useState<
@@ -13,6 +14,7 @@ export default function PropertyReviews({ slug }: { slug: string }) {
       avatar_seed: string;
       avatar_variant: AccountProfile["avatar_variant"];
       avatar_palette: AccountProfile["avatar_palette"];
+      photos: ReviewPhoto[];
     }[]
   >([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,7 @@ export default function PropertyReviews({ slug }: { slug: string }) {
               <Text mt={2} whiteSpace="pre-wrap">
                 {review.body}
               </Text>
+              <ReviewPhotoGrid photos={review.photos} />
             </Box>
           ))}
         </Stack>

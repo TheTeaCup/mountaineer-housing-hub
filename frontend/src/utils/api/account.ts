@@ -22,6 +22,22 @@ export async function accountRequest<T>(
   return data as T;
 }
 
+export async function accountFormRequest<T>(
+  path: string,
+  form: FormData,
+): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    body: form,
+  });
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.message || "The request could not be completed.");
+  return data as T;
+}
+
 export interface Favorite {
   slug: string;
   name: string;
@@ -41,4 +57,5 @@ export interface MyReview {
   rating: number;
   body: string;
   status: string;
+  photos: { id: number; url: string }[];
 }

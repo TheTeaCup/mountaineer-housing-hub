@@ -1,11 +1,13 @@
 # # Mountaineer Housing Hub - Frontend
 
 You will need a file named `.dev.vars` with the following information:
+
 ```
 NEXTJS_ENV=development
 ```
 
 Copy `.env.example` to `.env.local` with:
+
 ```
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
@@ -24,9 +26,16 @@ and set the backend's `FRONTEND_URL` to that origin. The existing API at
 session cookies on API requests. Use the custom domain to sign in instead of
 the `workers.dev` URL.
 
+`NEXT_PUBLIC_API_URL` is embedded into browser code during `next build`; a
+Wrangler runtime variable cannot change an already-built client bundle. The
+application therefore uses the public API domain for production builds and
+rejects an accidentally embedded localhost URL. Local development continues
+to use `http://localhost:3001`.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 
 ## Getting Started
+
 ellie bartlett
 First, run the development server:
 
@@ -58,4 +67,3 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
-

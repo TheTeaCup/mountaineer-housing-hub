@@ -1,4 +1,5 @@
 import { useAuth } from "@/components/ui/auth-provider";
+import SignInRequired from "@/components/ui/sign-in-required";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import {
@@ -62,10 +63,10 @@ export default function ApartmentForm() {
   if (loading) return <Text>Loading…</Text>;
   if (!session)
     return (
-      <Text>
-        <NextLink href="/auth/login">Sign in</NextLink> to suggest a property or
-        rental agency.
-      </Text>
+      <SignInRequired
+        title="Sign in to suggest a listing"
+        description="Use your App State account to suggest a missing property or rental agency. Staff verify every suggestion before it appears on the site."
+      />
     );
   return (
     <>

@@ -28,7 +28,7 @@ export async function publishSuggestion(
         : submission.proposed_agency_name
     )!;
     const agency = await db.execute(
-      "INSERT INTO agencies (name, slug, website_url, description) VALUES (?, ?, ?, ?)",
+      "INSERT INTO agencies (name, slug, website_url, description, phone) VALUES (?, ?, ?, ?, ?)",
       [
         name,
         await availableSlug(db, "agencies", name),
@@ -36,6 +36,7 @@ export async function publishSuggestion(
           ? submission.website
           : submission.proposed_agency_website,
         submission.submission_kind === "agency" ? submission.information : null,
+        submission.submission_kind === "agency" ? details.phone : null,
       ],
     );
     agencyId = agency.insertId!;

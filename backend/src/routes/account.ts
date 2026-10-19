@@ -1,6 +1,15 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import {
+  imageExtension,
+  imageType,
+  imageUpload,
+} from "../middleware/image-upload.js";
+import { deleteImages, uploadImage } from "../storage/images.js";
 import { validateHousingSubmission } from "./housing-submission.js";
+import { attachReviewPhotos } from "./review-photos.js";
+
+const MAX_REVIEW_PHOTOS = 5;
 
 export interface CatalogDatabase {
   query: <T>(sql: string, params?: unknown[]) => Promise<T[]>;
@@ -12,12 +21,13 @@ export interface CatalogDatabase {
 export interface AccountDependencies extends CatalogDatabase {
   transaction: <T>(work: (db: CatalogDatabase) => Promise<T>) => Promise<T>;
   frontendOrigin: string;
+  backendOrigin: string;
   getUser: (headers: Record<string, unknown>) => Promise<string | undefined>;
   query: <T>(sql: string, params?: unknown[]) => Promise<T[]>;
   execute: (
     sql: string,
     params?: unknown[],
-  ) => Promise<{ affectedRows: number }>;
+  ) => Promise<{ affectedRows: number; insertId?: number }>;
   ensureProfile: (userId: string) => Promise<string>;
   generateUsername?: () => Promise<string>;
 }
@@ -167,69 +177,101 @@ export function createAccountRouter(deps: AccountDependencies) {
     res.json({ saved: false });
   });
   router.get("/reviews", async (_req, res) => {
-    res.json(
-      await deps.query(
-        "SELECT r.id, r.rating, r.body, r.status, r.updated_at, p.slug, p.name FROM reviews r JOIN properties p ON p.id = r.property_id WHERE r.user_id = ? ORDER BY r.updated_at DESC",
-        [res.locals.userId],
-      ),
+    const reviews = await deps.query<{ id: number } & Record<string, unknown>>(
+      "SELECT r.id, r.rating, r.body, r.status, r.updated_at, p.slug, p.name FROM reviews r JOIN properties p ON p.id = r.property_id WHERE r.user_id = ? ORDER BY r.updated_at DESC",
+      [res.locals.userId],
     );
+    res.json(await attachReviewPhotos(deps, reviews, deps.backendOrigin));
   });
-  router.post("/reviews", async (req, res) => {
-    const { slug, rating, body, pros, cons, recommendation } = req.body ?? {};
-    if (
-      typeof slug !== "string" ||
-      !Number.isInteger(rating) ||
-      rating < 1 ||
-      rating > 5 ||
-      typeof body !== "string" ||
-      !body.trim() ||
-      body.length > 10000 ||
-      (pros !== undefined &&
-        (typeof pros !== "string" || pros.length > 2000)) ||
-      (cons !== undefined &&
-        (typeof cons !== "string" || cons.length > 2000)) ||
-      !["yes", "maybe", "no", null, undefined].includes(recommendation)
-    ) {
-      res
-        .status(400)
-        .json({ message: "Enter a valid apartment, rating, and review." });
-      return;
-    }
-    const properties = await deps.query<{ id: number }>(
-      "SELECT id FROM properties WHERE slug = ? AND status = 'published'",
-      [slug],
-    );
-    if (!properties[0]) {
-      res
-        .status(404)
-        .json({ message: "Apartment is not available for reviews." });
-      return;
-    }
-    try {
-      await deps.execute(
-        "INSERT INTO reviews (property_id, user_id, rating, body, pros, cons, recommendation) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [
-          properties[0].id,
-          res.locals.userId,
-          rating,
-          body.trim(),
-          pros || null,
-          cons || null,
-          recommendation || null,
-        ],
-      );
-      res.status(201).json({ status: "pending" });
-    } catch (error) {
-      if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
-        res.status(409).json({
-          message:
-            "You already reviewed this apartment. Edit it in My Account.",
+  router.post(
+    "/reviews",
+    imageUpload("photos", MAX_REVIEW_PHOTOS),
+    async (req, res) => {
+      const { slug, rating, body, pros, cons, recommendation } = req.body ?? {};
+      const numericRating = Number(rating);
+      const normalizedRecommendation = recommendation || null;
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      if (
+        typeof slug !== "string" ||
+        !Number.isInteger(numericRating) ||
+        numericRating < 1 ||
+        numericRating > 5 ||
+        typeof body !== "string" ||
+        !body.trim() ||
+        body.length > 10000 ||
+        (pros !== undefined &&
+          (typeof pros !== "string" || pros.length > 2000)) ||
+        (cons !== undefined &&
+          (typeof cons !== "string" || cons.length > 2000)) ||
+        !["yes", "maybe", "no", null].includes(normalizedRecommendation)
+      ) {
+        res
+          .status(400)
+          .json({ message: "Enter a valid apartment, rating, and review." });
+        return;
+      }
+      const photoTypes = files.map((file) => imageType(file.buffer));
+      if (photoTypes.some((type) => type === null)) {
+        res.status(400).json({
+          message: "Photos must be JPEG, PNG, or WebP images.",
         });
         return;
       }
-      throw error;
-    }
-  });
+      const properties = await deps.query<{ id: number }>(
+        "SELECT id FROM properties WHERE slug = ? AND status = 'published'",
+        [slug],
+      );
+      if (!properties[0]) {
+        res
+          .status(404)
+          .json({ message: "Apartment is not available for reviews." });
+        return;
+      }
+      let reviewId: number | undefined;
+      const uploadedKeys: string[] = [];
+      try {
+        const result = await deps.execute(
+          "INSERT INTO reviews (property_id, user_id, rating, body, pros, cons, recommendation) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [
+            properties[0].id,
+            res.locals.userId,
+            numericRating,
+            body.trim(),
+            pros || null,
+            cons || null,
+            normalizedRecommendation,
+          ],
+        );
+        reviewId = result.insertId;
+        if (!reviewId) throw new Error("Review was created without an ID.");
+
+        for (let index = 0; index < files.length; index++) {
+          const contentType = photoTypes[index]!;
+          const key = `review-photos/${reviewId}/${randomUUID()}.${imageExtension(contentType)}`;
+          await uploadImage(key, files[index].buffer, contentType);
+          uploadedKeys.push(key);
+          await deps.execute(
+            "INSERT INTO review_photos (review_id, image_url, sort_order) VALUES (?, ?, ?)",
+            [reviewId, key, index],
+          );
+        }
+        res.status(201).json({ status: "pending" });
+      } catch (error) {
+        if (uploadedKeys.length) await deleteImages(uploadedKeys);
+        if (reviewId) {
+          await deps.execute("DELETE FROM reviews WHERE id = ?", [reviewId]);
+        }
+        if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+          res.status(409).json({
+            message:
+              "You already reviewed this apartment. Edit it in My Account.",
+          });
+          return;
+        }
+        throw error;
+      }
+    },
+  );
   router.post("/apartments", async (req, res) => {
     let submission;
     try {
@@ -294,6 +336,10 @@ export function createAccountRouter(deps: AccountDependencies) {
     res.json({ status: "pending" });
   });
   router.delete("/reviews/:id", async (req, res) => {
+    const photos = await deps.query<{ image_url: string }>(
+      "SELECT rp.image_url FROM review_photos rp JOIN reviews r ON r.id = rp.review_id WHERE r.id = ? AND r.user_id = ?",
+      [req.params.id, res.locals.userId],
+    );
     const result = await deps.execute(
       "DELETE FROM reviews WHERE id = ? AND user_id = ?",
       [req.params.id, res.locals.userId],
@@ -302,6 +348,7 @@ export function createAccountRouter(deps: AccountDependencies) {
       res.status(404).json({ message: "Review not found." });
       return;
     }
+    await deleteImages(photos.map((photo) => photo.image_url));
     res.json({ deleted: true });
   });
   router.delete("/", async (req, res) => {
@@ -309,7 +356,12 @@ export function createAccountRouter(deps: AccountDependencies) {
       res.status(400).json({ message: "Type DELETE to confirm." });
       return;
     }
+    const photos = await deps.query<{ image_url: string }>(
+      "SELECT rp.image_url FROM review_photos rp JOIN reviews r ON r.id = rp.review_id WHERE r.user_id = ?",
+      [res.locals.userId],
+    );
     await deps.execute("DELETE FROM users WHERE id = ?", [res.locals.userId]);
+    await deleteImages(photos.map((photo) => photo.image_url));
     res.json({ deleted: true });
   });
   return router;

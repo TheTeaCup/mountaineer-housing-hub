@@ -386,10 +386,11 @@ separately by `rent_basis` to avoid comparing per-bedroom and whole-unit prices.
 
 Foreign keys block deleting agencies with properties and properties with reviews.
 Archive properties instead when they leave the directory. Deleting a user removes
-their profile, auth accounts/sessions, reviews, and review-photo rows. Deleting
-photo rows does not remove the underlying files from object storage.
+their profile, auth accounts/sessions, reviews, and review-photo rows. Review
+and account deletion through the API also removes the associated objects from
+R2; deleting photo rows directly in SQL does not.
 
-The future API must derive review authors from the session, enforce edit ownership
-and moderator permissions, restrict publication fields, validate URLs and upload
-types, enforce the form's 10-photo limit, and use parameterized queries. The schema
-alone does not implement authorization, moderation workflows, uploads, or routes.
+The API derives review authors from the session, enforces edit ownership and
+moderator permissions, restricts publication fields, validates upload signatures
+and sizes, enforces the form's five-photo limit, and uses parameterized queries.
+The schema alone does not implement authorization or moderation workflows.
