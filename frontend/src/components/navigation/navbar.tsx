@@ -206,7 +206,7 @@ export default function NavBar() {
                     <Menu.Item value="staff" asChild>
                       <NextLink href="/staff">
                         <FiShield />
-                        Staff dashboard
+                        Staff Dashboard
                       </NextLink>
                     </Menu.Item>
                   )}
