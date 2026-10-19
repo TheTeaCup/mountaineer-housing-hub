@@ -174,7 +174,8 @@ export default function EditProperty({
                   Keep buildings in the same apartment community under one
                   listing, such as University Highlands. Separate properties
                   across town get individual listings linked to their managing
-                  agency. Use the main address and map location of the community.
+                  agency. Use the main address and map location of the
+                  community.
                 </Text>
               )}
               {property.submission_kind !== "agency" && (
