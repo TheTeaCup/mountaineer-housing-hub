@@ -1,0 +1,7 @@
+# Generated build output
+.next/
+.open-next/
+.wrangler/
+
+# Dependencies
+node_modules/
