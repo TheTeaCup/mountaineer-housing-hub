@@ -330,19 +330,10 @@ export default function StaffDashboard({
                       <Text whiteSpace="pre-wrap" mt={2}>
                         {apartment.information}
                       </Text>
-                      <Flex gap={3} mt={4}>
+                      <Flex mt={4}>
                         <NextLink href={`/staff/apartments/${apartment.id}`}>
                           Review and edit before approval →
                         </NextLink>
-                        <Button
-                          disabled={pending !== null}
-                          variant="outline"
-                          onClick={() =>
-                            moderate("apartments", apartment.id, "rejected")
-                          }
-                        >
-                          Reject
-                        </Button>
                       </Flex>
                     </Box>
                   ))}

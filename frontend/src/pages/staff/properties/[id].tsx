@@ -67,6 +67,7 @@ export default function EditProperty({
   const [agencies, setAgencies] = useState<{ id: number; name: string }[]>([]);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [confirmReject, setConfirmReject] = useState(false);
   const id = router.query.id;
   useEffect(() => {
     if (profile?.role !== "staff" || typeof id !== "string") return;
@@ -103,6 +104,22 @@ export default function EditProperty({
       active = false;
     };
   }, [id, profile?.role, suggestion]);
+  async function rejectSuggestion() {
+    if (!suggestion || !property) return;
+    setPending(true);
+    setError("");
+    try {
+      await accountRequest(`/staff/apartments/${property.id}`, "PATCH", {
+        status: "rejected",
+      });
+      notifySuccess("Suggestion rejected");
+      await router.push("/staff/apartments");
+    } catch (error) {
+      notifyError("Could not reject suggestion", error);
+    } finally {
+      setPending(false);
+    }
+  }
   return (
     <>
       <SEO title={suggestion ? "Review suggestion" : "Edit property"} noIndex />
@@ -376,6 +393,47 @@ export default function EditProperty({
                   ? "Approve and publish edited suggestion"
                   : "Save property"}
               </Button>
+              {suggestion &&
+                (confirmReject ? (
+                  <Box
+                    borderWidth="1px"
+                    borderColor="border.error"
+                    borderRadius="md"
+                    p={4}
+                  >
+                    <Text mb={3}>
+                      Reject this suggestion without adding it to the catalog?
+                    </Text>
+                    <Stack direction="row" gap={3}>
+                      <Button
+                        type="button"
+                        colorPalette="red"
+                        loading={pending}
+                        onClick={rejectSuggestion}
+                      >
+                        Confirm rejection
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => setConfirmReject(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </Stack>
+                  </Box>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    colorPalette="red"
+                    disabled={pending}
+                    onClick={() => setConfirmReject(true)}
+                  >
+                    Reject suggestion
+                  </Button>
+                ))}
               {!suggestion && (
                 <PropertyPhotoManager
                   propertyId={property.id}
