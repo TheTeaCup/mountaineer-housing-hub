@@ -4,7 +4,6 @@ import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import { formatPhoneNumber } from "@/utils/format-phone";
 import {
-  Box,
   Button,
   Container,
   Field,
@@ -69,14 +68,13 @@ export default function EditAgency() {
         ) : !agency || String(agency.id) !== id ? (
           <Text>Loading rental agency…</Text>
         ) : (
-          <Box
-            as="form"
+          <form
             onSubmit={async (event) => {
               event.preventDefault();
               setPending(true);
               setError("");
               const data = Object.fromEntries(
-                new FormData(event.currentTarget as HTMLFormElement),
+                new FormData(event.currentTarget),
               );
               try {
                 await accountRequest(
@@ -185,7 +183,7 @@ export default function EditAgency() {
                 Save rental agency
               </Button>
             </Stack>
-          </Box>
+          </form>
         )}
       </Container>
     </>
