@@ -19,7 +19,7 @@ import { useState } from "react";
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const { properties, loading, error, retry } = useProperties("", 6);
+  const { properties, loading, error, retry } = useProperties("", 6, true);
 
   const handleSearch = () => {
     const query = searchQuery.trim();

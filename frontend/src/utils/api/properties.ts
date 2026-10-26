@@ -17,8 +17,10 @@ export async function fetchProperties(
   query = "",
   limit = 100,
   signal?: AbortSignal,
+  shuffle = false,
 ): Promise<Property[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
+  if (shuffle) params.set("sort", "random");
   const response = await fetch(`${API_URL}/properties?${params}`, {
     signal,
     cache: "no-store",

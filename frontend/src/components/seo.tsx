@@ -1,4 +1,6 @@
+import { siteUrl } from "@/utils/site-url";
 import Head from "next/head";
+import { useRouter } from "next/router";
 
 type SEOProps = {
   title?: string;
@@ -13,7 +15,6 @@ const defaultSEO = {
   title: "Mountaineer Housing Hub",
   description: "TBD",
   image: "/default-image.png",
-  url: "https://mountaineer-housing-hub.teacup.workers.dev/",
 };
 
 export default function SEO({
@@ -24,11 +25,12 @@ export default function SEO({
   keywords,
   noIndex,
 }: SEOProps) {
+  const router = useRouter();
   const seo = {
     title: title ? `${title} | ${defaultSEO.title}` : defaultSEO.title,
     description: description || defaultSEO.description,
     image: image || defaultSEO.image,
-    url: url || defaultSEO.url,
+    url: url || siteUrl(router.asPath.split(/[?#]/)[0]),
   };
 
   return (

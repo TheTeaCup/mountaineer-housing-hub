@@ -8,8 +8,8 @@ published properties. `/robots.txt` advertises the sitemap. The sitemap fetches
 the backend's `/sitemap` catalog and can be cached for one hour (with up to one
 additional hour while revalidating).
 
-Set `NEXT_PUBLIC_SITE_URL` before building the frontend when using a custom
+Set `NEXT_PUBLIC_SITE_URL` before building the frontend when using a different
 domain. It controls sitemap URLs, canonical links, and Open Graph page URLs;
-the default is `https://mountaineer-housing-hub.teacup.workers.dev`.
+the default is `https://mountaineer-housing-hub.theteacup.dev`.
 Deploy the backend and frontend together so the random listing option and
 sitemap catalog endpoint are available.
