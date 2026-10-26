@@ -1,3 +1,4 @@
+import { safeUrl } from "@/utils/api/properties";
 import { siteUrl } from "@/utils/site-url";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -6,6 +7,7 @@ type SEOProps = {
   title?: string;
   description?: string;
   image?: string;
+  imageAlt?: string;
   url?: string;
   keywords?: string[];
   noIndex?: boolean;
@@ -13,14 +15,16 @@ type SEOProps = {
 
 const defaultSEO = {
   title: "Mountaineer Housing Hub",
-  description: "TBD",
-  image: "/default-image.png",
+  description:
+    "Find off-campus housing in Boone, NC. Compare student apartments, rental agencies, floor plans, pricing, and reviews from students near Appalachian State University.",
+  image: "/assets/background.jpeg",
 };
 
 export default function SEO({
   title,
   description,
   image,
+  imageAlt,
   url,
   keywords,
   noIndex,
@@ -29,7 +33,7 @@ export default function SEO({
   const seo = {
     title: title ? `${title} | ${defaultSEO.title}` : defaultSEO.title,
     description: description || defaultSEO.description,
-    image: image || defaultSEO.image,
+    image: new URL(safeUrl(image, true) || defaultSEO.image, siteUrl("/")).href,
     url: url || siteUrl(router.asPath.split(/[?#]/)[0]),
   };
 
@@ -43,6 +47,7 @@ export default function SEO({
       <meta property="og:title" content={seo.title} />
       <meta property="og:description" content={seo.description} />
       <meta property="og:image" content={seo.image} />
+      <meta property="og:image:alt" content={imageAlt || defaultSEO.title} />
       <meta property="og:url" content={seo.url} />
 
       {/* Twitter */}
@@ -50,6 +55,7 @@ export default function SEO({
       <meta name="twitter:title" content={seo.title} />
       <meta name="twitter:description" content={seo.description} />
       <meta name="twitter:image" content={seo.image} />
+      <meta name="twitter:image:alt" content={imageAlt || defaultSEO.title} />
 
       {/* Robots */}
       {noIndex && <meta name="robots" content="noindex, nofollow" />}

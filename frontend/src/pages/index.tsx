@@ -34,7 +34,7 @@ export default function Home() {
 
   return (
     <>
-      <SEO />
+      <SEO title="Off-Campus Housing in Boone, NC" />
       <Box
         flex="1"
         bg="var(--site-bg)"

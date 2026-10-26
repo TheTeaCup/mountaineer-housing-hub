@@ -7,10 +7,13 @@ import type { Property } from "@/types/properties";
 import {
   fetchProperty,
   planRent,
+  PropertyRequestError,
   propertyTypeLabel,
   safeUrl,
 } from "@/utils/api/properties";
 import { formatPhoneNumber, phoneHref } from "@/utils/format-phone";
+import { propertyDescription } from "@/utils/property-description";
+import { siteUrl } from "@/utils/site-url";
 import {
   Box,
   Button,
@@ -21,45 +24,69 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import type { GetServerSideProps } from "next";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
 
-export default function PropertyPage() {
+type PropertyPageProps = {
+  property: Property | null;
+  error: string;
+};
+
+export const getServerSideProps: GetServerSideProps<
+  PropertyPageProps
+> = async ({ params, res }) => {
+  const slug = params?.slug;
+  if (typeof slug !== "string" || !slug) return { notFound: true };
+
+  // Fetch current public data on every request, including client navigation.
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const property = await fetchProperty(slug, AbortSignal.timeout(10_000));
+    return { props: { property, error: "" } };
+  } catch (error) {
+    if (error instanceof PropertyRequestError && error.status === 404) {
+      return { notFound: true };
+    }
+    console.error("Unable to load property page", error);
+    res.statusCode = 503;
+    res.setHeader("Retry-After", "300");
+    return {
+      props: {
+        property: null,
+        error:
+          "Property details are temporarily unavailable. Please try again.",
+      },
+    };
+  }
+};
+
+export default function PropertyPage({ property, error }: PropertyPageProps) {
   const router = useRouter();
   const { profile } = useAccount();
-  const slug = typeof router.query.slug === "string" ? router.query.slug : "";
-  const [result, setResult] = useState<{
-    slug: string;
-    property: Property | null;
-    error: string;
-  }>({ slug: "", property: null, error: "" });
-  const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    if (!slug) return;
-    const controller = new AbortController();
-    fetchProperty(slug, controller.signal)
-      .then((property) => {
-        if (!controller.signal.aborted)
-          setResult({ slug, property, error: "" });
-      })
-      .catch((err: Error) => {
-        if (!controller.signal.aborted)
-          setResult({ slug, property: null, error: err.message });
-      });
-    return () => controller.abort();
-  }, [slug, revision]);
-  const property = result.slug === slug ? result.property : null;
-  const error = result.slug === slug ? result.error : "";
   const website = safeUrl(property?.website_url);
   const agencyWebsite = safeUrl(property?.agency?.website_url);
   const propertyPhoneDigits = property?.phone?.replace(/\D/g, "");
   const agencyPhoneDigits = property?.agency?.phone?.replace(/\D/g, "");
   const hasCoordinates =
     property?.latitude !== null && property?.longitude !== null;
+  const previewPhoto = property?.photos.find((photo) =>
+    safeUrl(photo.image_url, true),
+  );
   return (
     <>
-      <SEO title={property?.name || "Property"} />
+      <SEO
+        title={property?.name || "Property unavailable"}
+        description={property ? propertyDescription(property) : error}
+        image={previewPhoto?.image_url}
+        imageAlt={previewPhoto?.alt_text || property?.name}
+        url={
+          property
+            ? siteUrl(`/properties/${encodeURIComponent(property.slug)}`)
+            : undefined
+        }
+        noIndex={!property}
+      />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1100px" py={10}>
           <NextLink href="/properties">← All properties</NextLink>
@@ -68,7 +95,7 @@ export default function PropertyPage() {
               <Heading as="h1" size="lg">
                 {error}
               </Heading>
-              <Button mt={4} onClick={() => setRevision((value) => value + 1)}>
+              <Button mt={4} onClick={() => void router.replace(router.asPath)}>
                 Try again
               </Button>
             </Box>

@@ -31,6 +31,17 @@ export async function fetchProperties(
     );
   return response.json();
 }
+export class PropertyRequestError extends Error {
+  constructor(public readonly status: number) {
+    super(
+      status === 404
+        ? "Property not found."
+        : "Property details are temporarily unavailable. Please try again.",
+    );
+    this.name = "PropertyRequestError";
+  }
+}
+
 export async function fetchProperty(
   slug: string,
   signal?: AbortSignal,
@@ -39,12 +50,7 @@ export async function fetchProperty(
     `${API_URL}/properties/${encodeURIComponent(slug)}`,
     { signal, cache: "no-store" },
   );
-  if (!response.ok)
-    throw new Error(
-      response.status === 404
-        ? "Property not found."
-        : "Property details are temporarily unavailable. Please try again.",
-    );
+  if (!response.ok) throw new PropertyRequestError(response.status);
   return response.json();
 }
 export function safeUrl(

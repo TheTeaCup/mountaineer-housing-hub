@@ -1,8 +1,11 @@
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
-import { notifyError, notifySuccess } from "@/components/ui/toaster";
+import {
+  notifyError,
+  notifyInfo,
+  notifySuccess,
+} from "@/components/ui/toaster";
 import { Box, Button, IconButton, Text } from "@chakra-ui/react";
-import { useRouter } from "next/router";
 import { useState } from "react";
 import { FiHeart } from "react-icons/fi";
 
@@ -18,7 +21,6 @@ export default function FavoriteButton({
   const { session, loading } = useAuth();
   const { favorites, toggleFavorite, error: accountError } = useAccount();
   const [pending, setPending] = useState(false);
-  const router = useRouter();
   const saved = favorites.some((favorite) => favorite.slug === slug);
   const Control = iconOnly ? IconButton : Button;
   const label = saved ? "Remove apartment from favorites" : "Save apartment";
@@ -51,7 +53,10 @@ export default function FavoriteButton({
         loading={pending}
         onClick={async () => {
           if (!session) {
-            await router.push("/auth/login");
+            notifyInfo(
+              "Sign in to save properties",
+              "Use the account menu to sign in with your App State account and save your favorites.",
+            );
             return;
           }
           setPending(true);

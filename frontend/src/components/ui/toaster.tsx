@@ -23,6 +23,16 @@ export function notifySuccess(title: string, description?: string) {
   });
 }
 
+export function notifyInfo(title: string, description?: string) {
+  toaster.create({
+    title,
+    description,
+    type: "info",
+    duration: 5000,
+    closable: true,
+  });
+}
+
 export function notifyError(title: string, error: unknown) {
   toaster.create({
     title,
