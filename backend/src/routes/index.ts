@@ -6,6 +6,7 @@ import { createPropertiesRouter } from "./properties.js";
 import { config } from "../config.js";
 import { attachReviewPhotos } from "./review-photos.js";
 import { createAgenciesRouter } from "./agencies.js";
+import { createSitemapRouter } from "./sitemap.js";
 
 const router = Router();
 router.get("/properties/:slug/reviews", async (req, res) => {
@@ -26,6 +27,7 @@ router.use(
   createPropertiesRouter(query, new URL(config.BETTER_AUTH_URL).origin),
 );
 router.use("/agencies", createAgenciesRouter(query));
+router.use("/sitemap", createSitemapRouter(query));
 
 router.get("/", (req: Request, res: Response) => {
   res.json({ error: false, message: "OK" });
