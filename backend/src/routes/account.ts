@@ -147,6 +147,14 @@ export function createAccountRouter(deps: AccountDependencies) {
       ),
     );
   });
+  router.get("/managed-properties", async (_req, res) => {
+    res.json(
+      await deps.query(
+        "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
+        [res.locals.userId],
+      ),
+    );
+  });
   router.get("/agencies", async (_req, res) => {
     res.json(
       await deps.query("SELECT id, name FROM agencies ORDER BY name LIMIT 500"),

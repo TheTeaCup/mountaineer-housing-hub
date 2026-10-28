@@ -164,7 +164,9 @@ with no coordinates remain in the directory but have no map marker.
 
 No schema changes or example records are needed for this API. The old frontend
 demo file remains available to the opt-in development seed script, but public
-pages no longer use it as a fallback. Agency catalog pages are still placeholders.
+pages no longer use it as a fallback. The agency directory lists agency records,
+and each slug page shows its contact details, description, ratings, and managed
+properties.
 
 ### Suggestion submission flow
 
@@ -197,6 +199,12 @@ Avatar style, palette, and shuffle seed are stored in `user_profiles`; neither
 uploaded avatars nor Google profile photos are used. Avatar choices appear in
 the navbar and on published reviews.
 
+For property-scoped editor access and floor-plan notes on an existing database,
+run migrations `005_property_editors.sql` and `006_floor_plan_description.sql`
+in order. Migration 005 adds staff-managed user/property assignments. Migration
+006 adds optional public notes to each floor plan. Fresh database bootstraps
+already include both schema additions.
+
 For an existing database, run `src/db/migrations/001_accounts_and_staff.sql`
 once in phpMyAdmin's SQL tab. It adds the `role` column and the `favorites` and
 `apartment_submissions` tables. Existing accounts default to `user`. The migration
@@ -216,13 +224,16 @@ These are demonstration listings, not newly verified housing data.
 
 Frontend routes:
 
-- `/account`: private saved apartments, authored reviews, username, appearance,
-  and account deletion with typed confirmation.
+- `/account`: private saved apartments, assigned property editor links, authored
+  reviews, username, appearance, and account deletion with typed confirmation.
 - `/staff`: staff landing page linking to each administration section.
 - `/staff/apartments`: pending apartment suggestions.
 - `/staff/reviews`: pending apartment reviews.
 - `/staff/submissions`: legacy link redirecting to `/staff/reviews`.
 - `/staff/users`: registered accounts, 25 per page; excludes passwords and tokens.
+- `/staff/users/:id`: grants or removes property-specific editing access.
+- `/staff/properties/:id`: property details and listing-readiness warnings, with
+  separate floor-plan and photo pages.
 
 Review submissions start pending. Staff approval publishes them in the property's
 student review section. Author edits return them to pending. Apartment suggestion

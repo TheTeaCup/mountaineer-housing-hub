@@ -34,6 +34,7 @@ export interface FloorPlanRow {
   rent_min: number | string | null;
   rent_max: number | string | null;
   rent_basis: string;
+  description: string | null;
 }
 interface PhotoRow {
   id: number;
@@ -90,6 +91,7 @@ export function publicProperty(
       rent_min: numberOrNull(plan.rent_min),
       rent_max: numberOrNull(plan.rent_max),
       rent_basis: plan.rent_basis,
+      description: plan.description,
     })),
     photos: photos.map((photo) => ({
       image_url: propertyPhotoUrl(photo, backendOrigin),
@@ -118,7 +120,7 @@ export function createPropertiesRouter(
     const placeholders = ids.map(() => "?").join(",");
     const [plans, photos] = await Promise.all([
       query<FloorPlanRow>(
-        `SELECT id, property_id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis FROM floor_plans WHERE property_id IN (${placeholders}) ORDER BY bedrooms, name`,
+        `SELECT id, property_id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis, description FROM floor_plans WHERE property_id IN (${placeholders}) ORDER BY bedrooms, name`,
         ids,
       ),
       query<PhotoRow>(

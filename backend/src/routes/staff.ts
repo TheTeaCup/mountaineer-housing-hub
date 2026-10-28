@@ -26,6 +26,7 @@ interface StaffFloorPlanRow {
   rent_min: number | string | null;
   rent_max: number | string | null;
   rent_basis: "per_unit" | "per_bedroom";
+  description: string | null;
 }
 
 function floorPlanInput(body: Record<string, unknown>) {
@@ -40,6 +41,8 @@ function floorPlanInput(body: Record<string, unknown>) {
   const rentMin = optionalNumber(body.rent_min);
   const rentMax = optionalNumber(body.rent_max);
   const rentBasis = body.rent_basis;
+  const description =
+    typeof body.description === "string" ? body.description.trim() : "";
 
   if (!name || name.length > 100) {
     throw new Error("Enter a floor plan name up to 100 characters.");
@@ -84,6 +87,9 @@ function floorPlanInput(body: Record<string, unknown>) {
   if (!["per_unit", "per_bedroom"].includes(String(rentBasis))) {
     throw new Error("Choose whether rent is per unit or per bedroom.");
   }
+  if (description.length > 2000) {
+    throw new Error("Floor plan notes must be 2,000 characters or fewer.");
+  }
 
   return {
     name,
@@ -93,6 +99,7 @@ function floorPlanInput(body: Record<string, unknown>) {
     rentMin,
     rentMax,
     rentBasis: rentBasis as "per_unit" | "per_bedroom",
+    description: description || null,
   };
 }
 
@@ -112,11 +119,25 @@ export function createStaffRouter(deps: AccountDependencies) {
       "SELECT role FROM users WHERE id = ?",
       [userId],
     );
-    if (users[0]?.role !== "staff") {
-      res.status(403).json({ message: "Staff access required." });
+    res.locals.userId = userId;
+    if (users[0]?.role === "staff") {
+      next();
       return;
     }
-    next();
+    const propertyMatch = req.path.match(/^\/properties\/(\d+)(?:\/|$)/);
+    if (propertyMatch) {
+      const assignments = await deps.query<{ user_id: number }>(
+        "SELECT user_id FROM property_editors WHERE user_id = ? AND property_id = ?",
+        [userId, propertyMatch[1]],
+      );
+      if (assignments[0]) {
+        next();
+        return;
+      }
+    }
+    res
+      .status(403)
+      .json({ message: "Staff or assigned property access required." });
   });
   router.get("/users", async (req, res) => {
     const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
@@ -129,6 +150,75 @@ export function createStaffRouter(deps: AccountDependencies) {
       "SELECT COUNT(*) AS total FROM users",
     );
     res.json({ users: rows, total: count[0]?.total ?? 0 });
+  });
+  router.get("/users/:id", async (req, res) => {
+    const users = await deps.query(
+      "SELECT u.id, u.email, u.role, u.status, u.created_at, u.last_login, p.username FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ?",
+      [req.params.id],
+    );
+    if (!users[0]) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+    const [assignedProperties, properties] = await Promise.all([
+      deps.query(
+        "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
+        [req.params.id],
+      ),
+      deps.query(
+        "SELECT id, name, slug, status FROM properties ORDER BY name LIMIT 500",
+      ),
+    ]);
+    res.json({ user: users[0], assignedProperties, properties });
+  });
+  router.put("/users/:id/properties/:propertyId", async (req, res) => {
+    const users = await deps.query<{
+      id: number;
+      role: string;
+      status: string;
+    }>("SELECT id, role, status FROM users WHERE id = ?", [req.params.id]);
+    if (!users[0]) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+    if (users[0].status !== "active") {
+      res
+        .status(400)
+        .json({ message: "Only active users can edit properties." });
+      return;
+    }
+    if (users[0].role === "staff") {
+      res.status(400).json({
+        message: "Staff members already have access to every property.",
+      });
+      return;
+    }
+    const properties = await deps.query<{ id: number }>(
+      "SELECT id FROM properties WHERE id = ?",
+      [req.params.propertyId],
+    );
+    if (!properties[0]) {
+      res.status(404).json({ message: "Property not found." });
+      return;
+    }
+    await deps.execute(
+      "INSERT INTO property_editors (user_id, property_id, assigned_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by)",
+      [req.params.id, req.params.propertyId, res.locals.userId],
+    );
+    res.status(201).json({ assigned: true });
+  });
+  router.delete("/users/:id/properties/:propertyId", async (req, res) => {
+    const result = await deps.execute(
+      "DELETE FROM property_editors WHERE user_id = ? AND property_id = ?",
+      [req.params.id, req.params.propertyId],
+    );
+    if (!result.affectedRows) {
+      res
+        .status(404)
+        .json({ message: "This property is not assigned to the user." });
+      return;
+    }
+    res.json({ assigned: false });
   });
   router.get("/reviews", async (_req, res) => {
     const reviews = await deps.query<{ id: number } & Record<string, unknown>>(
@@ -342,7 +432,9 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.get("/properties", async (_req, res) => {
     res.json(
-      await deps.query("SELECT id, name, slug FROM properties ORDER BY name"),
+      await deps.query(
+        "SELECT p.id, p.name, p.slug, p.status, p.address_line1 AS address, a.name AS agency_name FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id ORDER BY p.name LIMIT 500",
+      ),
     );
   });
   router.get("/properties/:id", async (req, res) => {
@@ -357,7 +449,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     const [photos, floorPlans] = await Promise.all([
       propertyPhotos(deps, rows[0].id, deps.backendOrigin),
       deps.query<StaffFloorPlanRow>(
-        "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
+        "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis, description FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
         [rows[0].id],
       ),
     ]);
@@ -395,7 +487,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     }
     try {
       await deps.execute(
-        "INSERT INTO floor_plans (property_id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO floor_plans (property_id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           propertyId,
           plan.name,
@@ -405,6 +497,7 @@ export function createStaffRouter(deps: AccountDependencies) {
           plan.rentMin,
           plan.rentMax,
           plan.rentBasis,
+          plan.description,
         ],
       );
     } catch (error) {
@@ -422,7 +515,7 @@ export function createStaffRouter(deps: AccountDependencies) {
       [propertyId],
     );
     const floorPlans = await deps.query<StaffFloorPlanRow>(
-      "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
+      "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis, description FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
       [propertyId],
     );
     res.status(201).json({

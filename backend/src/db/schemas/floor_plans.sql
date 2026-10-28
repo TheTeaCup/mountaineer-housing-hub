@@ -10,6 +10,7 @@ CREATE TABLE floor_plans (
   rent_min DECIMAL(10, 2) NULL,
   rent_max DECIMAL(10, 2) NULL,
   rent_basis ENUM ('per_unit', 'per_bedroom') NOT NULL,
+  description TEXT NULL,
   source_url VARCHAR(2048) NULL,
   last_verified_at DATE NULL,
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

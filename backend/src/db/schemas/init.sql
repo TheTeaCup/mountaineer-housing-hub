@@ -8,6 +8,8 @@ SOURCE src / db / schemas / agencies.sql;
 
 SOURCE src / db / schemas / properties.sql;
 
+SOURCE src / db / schemas / property_editors.sql;
+
 SOURCE src / db / schemas / floor_plans.sql;
 
 SOURCE src / db / schemas / reviews.sql;

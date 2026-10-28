@@ -34,7 +34,6 @@ export function createAgenciesRouter(
   router.get("/", async (_req, res) => {
     const agencies = await query<AgencyRow>(
       `${select} GROUP BY a.id, a.name, a.slug, a.description, a.website_url, a.phone, a.email
-       HAVING COUNT(DISTINCT p.id) > 0
        ORDER BY property_count DESC, a.name LIMIT 500`,
     );
     res.json(agencies.map(publicAgency));
@@ -44,7 +43,7 @@ export function createAgenciesRouter(
     const agencies = await query<AgencyRow>(
       `${select} WHERE a.slug = ?
        GROUP BY a.id, a.name, a.slug, a.description, a.website_url, a.phone, a.email
-       HAVING COUNT(DISTINCT p.id) > 0 LIMIT 1`,
+       LIMIT 1`,
       [req.params.slug],
     );
     if (!agencies[0]) {
