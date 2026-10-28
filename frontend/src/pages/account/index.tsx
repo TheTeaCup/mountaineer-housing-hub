@@ -149,6 +149,9 @@ export default function AccountPage() {
   const { session, loading, logout } = useAuth();
   const { favorites, error: accountError } = useAccount();
   const [reviews, setReviews] = useState<MyReview[]>([]);
+  const [managedProperties, setManagedProperties] = useState<
+    { id: number; name: string; slug: string; status: string }[]
+  >([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
@@ -158,9 +161,17 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session) return;
     let active = true;
-    accountRequest<MyReview[]>("/account/reviews")
-      .then((data) => {
-        if (active) setReviews(data);
+    Promise.all([
+      accountRequest<MyReview[]>("/account/reviews"),
+      accountRequest<
+        { id: number; name: string; slug: string; status: string }[]
+      >("/account/managed-properties"),
+    ])
+      .then(([reviewData, propertyData]) => {
+        if (active) {
+          setReviews(reviewData);
+          setManagedProperties(propertyData);
+        }
       })
       .catch((err: Error) => {
         if (active) setError(err.message);
@@ -232,6 +243,28 @@ export default function AccountPage() {
                   </Text>
                 )}
               </Box>
+              {managedProperties.length > 0 && (
+                <Box {...panel}>
+                  <Heading as="h2" size="lg" mb={2}>
+                    Properties I manage
+                  </Heading>
+                  <Text color="var(--site-muted)" mb={4}>
+                    Staff granted you access to maintain these listings.
+                  </Text>
+                  <Stack gap={3}>
+                    {managedProperties.map((property) => (
+                      <Box key={property.id}>
+                        <NextLink href={`/account/properties/${property.id}`}>
+                          {property.name} — Edit listing →
+                        </NextLink>
+                        <Text color="var(--site-muted)" fontSize="sm">
+                          {property.status}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
               <Box {...panel}>
                 <Heading as="h2" size="lg" mb={4}>
                   My reviews
