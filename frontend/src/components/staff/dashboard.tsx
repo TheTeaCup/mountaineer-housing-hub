@@ -13,11 +13,12 @@ import {
   Container,
   Flex,
   Heading,
+  Input,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface StaffReview {
   id: number;
@@ -62,6 +63,14 @@ interface SiteUser {
   created_at: string;
   last_login: string | null;
 }
+interface StaffProperty {
+  id: number;
+  name: string;
+  slug: string;
+  status: string;
+  address: string;
+  agency_name: string | null;
+}
 
 export default function StaffDashboard({
   section,
@@ -82,9 +91,8 @@ export default function StaffDashboard({
   const [reviews, setReviews] = useState<StaffReview[]>([]);
   const [apartments, setApartments] = useState<ApartmentSubmission[]>([]);
   const [agencies, setAgencies] = useState<RentalAgency[]>([]);
-  const [properties, setProperties] = useState<{ id: number; name: string }[]>(
-    [],
-  );
+  const [properties, setProperties] = useState<StaffProperty[]>([]);
+  const [propertySearch, setPropertySearch] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -107,9 +115,7 @@ export default function StaffDashboard({
           const data =
             await accountRequest<ApartmentSubmission[]>("/staff/apartments");
           const listings =
-            await accountRequest<{ id: number; name: string }[]>(
-              "/staff/properties",
-            );
+            await accountRequest<StaffProperty[]>("/staff/properties");
           if (active) {
             setApartments(data);
             setProperties(listings);
@@ -165,6 +171,36 @@ export default function StaffDashboard({
       setPending(null);
     }
   }
+  const normalizedPropertySearch = propertySearch.trim().toLowerCase();
+  const filteredApartments = useMemo(
+    () =>
+      apartments.filter((apartment) =>
+        [
+          apartment.name,
+          apartment.address,
+          apartment.agency_name,
+          apartment.proposed_agency_name,
+          apartment.username,
+        ].some((value) =>
+          value?.toLowerCase().includes(normalizedPropertySearch),
+        ),
+      ),
+    [apartments, normalizedPropertySearch],
+  );
+  const filteredProperties = useMemo(
+    () =>
+      properties.filter((property) =>
+        [
+          property.name,
+          property.address,
+          property.agency_name,
+          property.status,
+        ].some((value) =>
+          value?.toLowerCase().includes(normalizedPropertySearch),
+        ),
+      ),
+    [normalizedPropertySearch, properties],
+  );
   const panel = {
     bg: "var(--site-surface)",
     borderWidth: "1px",
@@ -277,18 +313,61 @@ export default function StaffDashboard({
                 </Stack>
               ) : tab === "apartments" ? (
                 <Stack gap={4}>
+                  <Box {...panel}>
+                    <Heading as="h2" size="lg" mb={2}>
+                      Find a submission or property
+                    </Heading>
+                    <Text color="var(--site-muted)" mb={4}>
+                      Search by property, address, rental agency, submitter, or
+                      publication status.
+                    </Text>
+                    <Input
+                      type="search"
+                      aria-label="Search property administration"
+                      placeholder="Search properties and pending suggestions…"
+                      value={propertySearch}
+                      onChange={(event) =>
+                        setPropertySearch(event.target.value)
+                      }
+                    />
+                    {normalizedPropertySearch && (
+                      <Flex
+                        align="center"
+                        justify="space-between"
+                        gap={3}
+                        mt={3}
+                      >
+                        <Text fontSize="sm">
+                          {filteredApartments.length} pending and{" "}
+                          {filteredProperties.length} existing results
+                        </Text>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPropertySearch("")}
+                        >
+                          Clear search
+                        </Button>
+                      </Flex>
+                    )}
+                  </Box>
                   <Heading as="h2" size="lg">
-                    Pending property and agency suggestions
+                    Pending property and agency suggestions ({" "}
+                    {filteredApartments.length})
                   </Heading>
                   <Text fontSize="sm">
                     Showing up to 100 oldest suggestions. Approval publishes a
                     property listing or adds a rental agency to the catalog.
                     Edit properties below to add coordinates and verify details.
                   </Text>
-                  {!apartments.length && (
-                    <Text>No apartment suggestions waiting for review.</Text>
+                  {!filteredApartments.length && (
+                    <Text>
+                      {normalizedPropertySearch
+                        ? "No pending suggestions match this search."
+                        : "No apartment suggestions are waiting for review."}
+                    </Text>
                   )}
-                  {apartments.map((apartment) => (
+                  {filteredApartments.map((apartment) => (
                     <Box {...panel} key={apartment.id}>
                       <Heading as="h3" size="md">
                         {apartment.name}
@@ -338,15 +417,31 @@ export default function StaffDashboard({
                     </Box>
                   ))}
                   <Heading as="h2" size="lg" mt={6}>
-                    Edit properties
+                    Existing properties ({filteredProperties.length})
                   </Heading>
-                  {!properties.length && (
-                    <Text>No properties in the catalog yet.</Text>
+                  {!filteredProperties.length && (
+                    <Text>
+                      {normalizedPropertySearch
+                        ? "No existing properties match this search."
+                        : "No properties are in the catalog yet."}
+                    </Text>
                   )}
-                  {properties.map((property) => (
+                  {filteredProperties.map((property) => (
                     <Box {...panel} key={property.id}>
+                      <Heading as="h3" size="md" mb={2}>
+                        {property.name}
+                      </Heading>
+                      <Text color="var(--site-muted)" mb={1}>
+                        {property.address}
+                      </Text>
+                      <Text fontSize="sm" mb={3}>
+                        {property.agency_name
+                          ? `Managed by ${property.agency_name} · `
+                          : ""}
+                        {property.status}
+                      </Text>
                       <NextLink href={`/staff/properties/${property.id}`}>
-                        {property.name} — Edit details and coordinates →
+                        Edit property →
                       </NextLink>
                     </Box>
                   ))}
@@ -358,8 +453,8 @@ export default function StaffDashboard({
                   </Heading>
                   <Text fontSize="sm">
                     Agencies are management companies, not property or community
-                    names. Only agencies with at least one published property
-                    appear in the public directory.
+                    names. Every agency appears in the public directory; link
+                    its properties here so its public profile is useful.
                   </Text>
                   {!agencies.length && (
                     <Text>No rental agencies are in the catalog yet.</Text>
@@ -386,9 +481,9 @@ export default function StaffDashboard({
                       </Text>
                       {agency.property_count === 0 && (
                         <Text color="fg.warning" mb={2}>
-                          Hidden publicly because no properties are linked. If
-                          this is a property name, keep it as a property record
-                          instead of an agency.
+                          No properties are linked yet. If this is a property
+                          name, keep it as a property record instead of an
+                          agency.
                         </Text>
                       )}
                       {agency.website && (
@@ -439,7 +534,7 @@ export default function StaffDashboard({
                         {users.map((user) => (
                           <tr key={user.id}>
                             {[
-                              user.username || "—",
+                              user.username || "View user",
                               user.email,
                               user.role,
                               user.status,
@@ -455,7 +550,13 @@ export default function StaffDashboard({
                                   borderTop: "1px solid var(--site-border)",
                                 }}
                               >
-                                {value}
+                                {index === 0 ? (
+                                  <NextLink href={`/staff/users/${user.id}`}>
+                                    {value}
+                                  </NextLink>
+                                ) : (
+                                  value
+                                )}
                               </td>
                             ))}
                           </tr>

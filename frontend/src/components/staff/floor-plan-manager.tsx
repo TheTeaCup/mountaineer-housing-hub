@@ -12,6 +12,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { notifyError, notifySuccess } from "../ui/toaster";
@@ -24,6 +25,7 @@ const emptyPlan = {
   rent_min: "",
   rent_max: "",
   rent_basis: "per_unit" as FloorPlan["rent_basis"],
+  description: "",
 };
 
 export default function FloorPlanManager({
@@ -125,6 +127,15 @@ export default function FloorPlanManager({
                   <Text fontWeight="semibold" mt={1}>
                     {planRent(item)}
                   </Text>
+                  {item.description && (
+                    <Text
+                      color="var(--site-muted)"
+                      mt={2}
+                      whiteSpace="pre-wrap"
+                    >
+                      {item.description}
+                    </Text>
+                  )}
                 </Box>
                 {confirmDeleteId === item.id ? (
                   <Flex gap={2} flexWrap="wrap">
@@ -255,6 +266,19 @@ export default function FloorPlanManager({
             </Field.HelperText>
           </Field.Root>
         </SimpleGrid>
+        <Field.Root>
+          <Field.Label>Additional notes</Field.Label>
+          <Textarea
+            value={plan.description}
+            onChange={(event) => update("description", event.target.value)}
+            maxLength={2000}
+            rows={4}
+            placeholder="Optional details such as utilities, furnishing, lease terms, or layout notes"
+          />
+          <Field.HelperText>
+            Shown on the public property page.
+          </Field.HelperText>
+        </Field.Root>
         <Button
           type="button"
           alignSelf="flex-start"
