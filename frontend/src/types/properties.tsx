@@ -7,6 +7,7 @@ export interface FloorPlan {
   rent_min: number | null;
   rent_max: number | null;
   rent_basis: "per_unit" | "per_bedroom";
+  description: string | null;
 }
 export interface Property {
   id: number;

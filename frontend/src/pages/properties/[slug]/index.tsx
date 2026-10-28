@@ -178,6 +178,11 @@ export default function PropertyPage({ property, error }: PropertyPageProps) {
                                 : ""}
                             </Text>
                             <Text fontWeight="bold">{planRent(plan)}</Text>
+                            {plan.description && (
+                              <Text mt={3} whiteSpace="pre-wrap">
+                                {plan.description}
+                              </Text>
+                            )}
                           </Box>
                         ))}
                       </Stack>

@@ -1,8 +1,6 @@
 import SEO from "@/components/seo";
-import FloorPlanManager from "@/components/staff/floor-plan-manager";
-import PropertyPhotoManager, {
-  type StaffPropertyPhoto,
-} from "@/components/staff/property-photo-manager";
+import PropertyEditorNav from "@/components/staff/property-editor-nav";
+import type { StaffPropertyPhoto } from "@/components/staff/property-photo-manager";
 import { useAccount } from "@/components/ui/account-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import type { FloorPlan } from "@/types/properties";
@@ -61,11 +59,14 @@ const fields = [
 ] as const;
 export default function EditProperty({
   suggestion = false,
+  assigned = false,
 }: {
   suggestion?: boolean;
+  assigned?: boolean;
 }) {
   const router = useRouter();
   const { profile, error: accessError } = useAccount();
+  const role = profile?.role;
   const [property, setProperty] = useState<PropertyForm | null>(null);
   const [agencies, setAgencies] = useState<{ id: number; name: string }[]>([]);
   const [error, setError] = useState("");
@@ -73,7 +74,8 @@ export default function EditProperty({
   const [confirmReject, setConfirmReject] = useState(false);
   const id = router.query.id;
   useEffect(() => {
-    if (profile?.role !== "staff" || typeof id !== "string") return;
+    if (!role || (role !== "staff" && !assigned) || typeof id !== "string")
+      return;
     let active = true;
     Promise.all([
       accountRequest<PropertyForm>(
@@ -107,7 +109,29 @@ export default function EditProperty({
     return () => {
       active = false;
     };
-  }, [id, profile?.role, suggestion]);
+  }, [assigned, id, role, suggestion]);
+  const readinessWarnings = property
+    ? [
+        property.latitude === null ||
+        property.latitude === "" ||
+        property.longitude === null ||
+        property.longitude === ""
+          ? "Map coordinates are missing, so this property will not appear on the map."
+          : null,
+        !property.photos.length
+          ? "No property photos have been added. Add at least one image for the listing cover."
+          : null,
+        !property.floor_plans.length
+          ? "No floor plans or pricing have been added."
+          : null,
+        !property.information?.trim()
+          ? "The property description is missing."
+          : null,
+        !property.website?.trim() && !property.phone?.trim()
+          ? "No property website or phone number has been provided."
+          : null,
+      ].filter((warning): warning is string => warning !== null)
+    : [];
   async function rejectSuggestion() {
     if (!suggestion || !property) return;
     setPending(true);
@@ -128,16 +152,24 @@ export default function EditProperty({
     <>
       <SEO title={suggestion ? "Review suggestion" : "Edit property"} noIndex />
       <Container maxW="800px" py={10}>
-        <NextLink href="/staff/apartments">
-          ← Property submissions and listings
+        <NextLink href={assigned ? "/account" : "/staff/apartments"}>
+          ← {assigned ? "My account" : "Property submissions and listings"}
         </NextLink>
         <Heading as="h1" my={5}>
           {suggestion ? "Review and edit suggestion" : "Edit property"}
         </Heading>
+        {!suggestion && typeof id === "string" && (
+          <PropertyEditorNav
+            propertyId={id}
+            assigned={assigned}
+            active="details"
+          />
+        )}
         {accessError || error ? (
           <Text role="alert">{accessError || error}</Text>
-        ) : null}
-        {profile?.role !== "staff" ? (
+        ) : !profile ? (
+          <Text>Checking property access…</Text>
+        ) : profile.role !== "staff" && !assigned ? (
           <Text>Staff access is required.</Text>
         ) : !property || String(property.id) !== id ? (
           <Text>Loading property…</Text>
@@ -183,7 +215,17 @@ export default function EditProperty({
                     "The public listing and map use these details.",
                   );
                   setProperty((current) =>
-                    current ? { ...current, slug: String(data.slug) } : current,
+                    current
+                      ? {
+                          ...current,
+                          slug: String(data.slug),
+                          information: String(data.information || "") || null,
+                          website: String(data.website || "") || null,
+                          phone: String(data.phone || "") || null,
+                          latitude: String(data.latitude || "") || null,
+                          longitude: String(data.longitude || "") || null,
+                        }
+                      : current,
                   );
                 } catch (error) {
                   notifyError("Could not save property", error);
@@ -207,6 +249,36 @@ export default function EditProperty({
                     agency. Use the main address and map location of the
                     community.
                   </Text>
+                )}
+                {property.submission_kind !== "agency" && (
+                  <Box
+                    borderWidth="1px"
+                    borderColor={
+                      readinessWarnings.length
+                        ? "border.warning"
+                        : "border.success"
+                    }
+                    borderRadius="lg"
+                    p={4}
+                  >
+                    <Heading as="h2" size="md" mb={2}>
+                      Listing readiness
+                    </Heading>
+                    {readinessWarnings.length ? (
+                      <Box as="ul" pl={5}>
+                        {readinessWarnings.map((warning) => (
+                          <li key={warning}>
+                            <Text>{warning}</Text>
+                          </li>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Text>
+                        This listing has its core map, photo, floor-plan,
+                        description, and contact information.
+                      </Text>
+                    )}
+                  </Box>
                 )}
                 {property.submission_kind !== "agency" && (
                   <Field.Root required>
@@ -447,30 +519,6 @@ export default function EditProperty({
                   ))}
               </Stack>
             </Box>
-            {!suggestion && (
-              <Stack gap={4} mt={4}>
-                <FloorPlanManager
-                  propertyId={property.id}
-                  floorPlans={property.floor_plans}
-                  onChange={(floorPlans) =>
-                    setProperty((current) =>
-                      current
-                        ? { ...current, floor_plans: floorPlans }
-                        : current,
-                    )
-                  }
-                />
-                <PropertyPhotoManager
-                  propertyId={property.id}
-                  photos={property.photos}
-                  onChange={(photos) =>
-                    setProperty((current) =>
-                      current ? { ...current, photos } : current,
-                    )
-                  }
-                />
-              </Stack>
-            )}
           </>
         )}
       </Container>
