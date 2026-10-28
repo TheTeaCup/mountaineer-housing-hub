@@ -17,6 +17,85 @@ import { propertyPhotos } from "./property-photos.js";
 
 const MAX_PROPERTY_PHOTOS = 10;
 
+interface StaffFloorPlanRow {
+  id: number;
+  name: string;
+  bedrooms: number;
+  bathrooms: number | string;
+  square_feet: number | null;
+  rent_min: number | string | null;
+  rent_max: number | string | null;
+  rent_basis: "per_unit" | "per_bedroom";
+}
+
+function floorPlanInput(body: Record<string, unknown>) {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const bedrooms = Number(body.bedrooms);
+  const bathrooms = Number(body.bathrooms);
+  const optionalNumber = (value: unknown) =>
+    value === "" || value === null || value === undefined
+      ? null
+      : Number(value);
+  const squareFeet = optionalNumber(body.square_feet);
+  const rentMin = optionalNumber(body.rent_min);
+  const rentMax = optionalNumber(body.rent_max);
+  const rentBasis = body.rent_basis;
+
+  if (!name || name.length > 100) {
+    throw new Error("Enter a floor plan name up to 100 characters.");
+  }
+  if (!Number.isInteger(bedrooms) || bedrooms < 0 || bedrooms > 255) {
+    throw new Error("Bedrooms must be a whole number from 0 to 255.");
+  }
+  if (
+    !Number.isFinite(bathrooms) ||
+    bathrooms <= 0 ||
+    bathrooms > 99.9 ||
+    Math.round(bathrooms * 10) !== bathrooms * 10
+  ) {
+    throw new Error(
+      "Bathrooms must be a positive number with one decimal place.",
+    );
+  }
+  if (
+    squareFeet !== null &&
+    (!Number.isInteger(squareFeet) ||
+      squareFeet <= 0 ||
+      squareFeet > 4_294_967_295)
+  ) {
+    throw new Error("Square feet must be a positive whole number.");
+  }
+  for (const [label, value] of [
+    ["Minimum rent", rentMin],
+    ["Maximum rent", rentMax],
+  ] as const) {
+    if (
+      value !== null &&
+      (!Number.isFinite(value) || value < 0 || value > 99_999_999.99)
+    ) {
+      throw new Error(`${label} must be zero or greater.`);
+    }
+  }
+  if (rentMax !== null && (rentMin === null || rentMax < rentMin)) {
+    throw new Error(
+      "Maximum rent must be greater than or equal to minimum rent.",
+    );
+  }
+  if (!["per_unit", "per_bedroom"].includes(String(rentBasis))) {
+    throw new Error("Choose whether rent is per unit or per bedroom.");
+  }
+
+  return {
+    name,
+    bedrooms,
+    bathrooms,
+    squareFeet,
+    rentMin,
+    rentMax,
+    rentBasis: rentBasis as "per_unit" | "per_bedroom",
+  };
+}
+
 export function createStaffRouter(deps: AccountDependencies) {
   const router = Router();
   router.use(async (req, res, next) => {
@@ -275,11 +354,104 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(404).json({ message: "Property not found." });
       return;
     }
+    const [photos, floorPlans] = await Promise.all([
+      propertyPhotos(deps, rows[0].id, deps.backendOrigin),
+      deps.query<StaffFloorPlanRow>(
+        "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
+        [rows[0].id],
+      ),
+    ]);
     res.json({
       ...rows[0],
-      photos: await propertyPhotos(deps, rows[0].id, deps.backendOrigin),
+      photos,
+      floor_plans: floorPlans.map((plan) => ({
+        ...plan,
+        bathrooms: Number(plan.bathrooms),
+        rent_min: plan.rent_min === null ? null : Number(plan.rent_min),
+        rent_max: plan.rent_max === null ? null : Number(plan.rent_max),
+      })),
     });
   });
+  router.post("/properties/:id/floor-plans", async (req, res) => {
+    const propertyId = Number(req.params.id);
+    if (!Number.isInteger(propertyId) || propertyId < 1) {
+      res.status(400).json({ message: "Choose a valid property." });
+      return;
+    }
+    const properties = await deps.query<{ id: number }>(
+      "SELECT id FROM properties WHERE id = ?",
+      [propertyId],
+    );
+    if (!properties[0]) {
+      res.status(404).json({ message: "Property not found." });
+      return;
+    }
+    let plan;
+    try {
+      plan = floorPlanInput(req.body ?? {});
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
+    }
+    try {
+      await deps.execute(
+        "INSERT INTO floor_plans (property_id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+          propertyId,
+          plan.name,
+          plan.bedrooms,
+          plan.bathrooms,
+          plan.squareFeet,
+          plan.rentMin,
+          plan.rentMax,
+          plan.rentBasis,
+        ],
+      );
+    } catch (error) {
+      if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+        res.status(409).json({
+          message:
+            "A floor plan with this name already exists for the property.",
+        });
+        return;
+      }
+      throw error;
+    }
+    await deps.execute(
+      "UPDATE properties SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
+      [propertyId],
+    );
+    const floorPlans = await deps.query<StaffFloorPlanRow>(
+      "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
+      [propertyId],
+    );
+    res.status(201).json({
+      floor_plans: floorPlans.map((item) => ({
+        ...item,
+        bathrooms: Number(item.bathrooms),
+        rent_min: item.rent_min === null ? null : Number(item.rent_min),
+        rent_max: item.rent_max === null ? null : Number(item.rent_max),
+      })),
+    });
+  });
+  router.delete(
+    "/properties/:id/floor-plans/:floorPlanId",
+    async (req, res) => {
+      const result = await deps.execute(
+        "DELETE FROM floor_plans WHERE id = ? AND property_id = ?",
+        [req.params.floorPlanId, req.params.id],
+      );
+      if (!result.affectedRows) {
+        res.status(404).json({ message: "Floor plan not found." });
+        return;
+      }
+      await deps.execute(
+        "UPDATE properties SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
+        [req.params.id],
+      );
+      res.json({ deleted: true });
+    },
+  );
   router.post(
     "/properties/:id/photos",
     imageUpload("photos", MAX_PROPERTY_PHOTOS),
