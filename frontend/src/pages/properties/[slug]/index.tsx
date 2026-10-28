@@ -3,6 +3,7 @@ import PropertyPhoto from "@/components/properties/photo";
 import PropertyReviews from "@/components/properties/reviews";
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
+import { PropertyDetailSkeleton } from "@/components/ui/page-skeletons";
 import type { Property } from "@/types/properties";
 import {
   fetchProperty,
@@ -100,9 +101,7 @@ export default function PropertyPage({ property, error }: PropertyPageProps) {
               </Button>
             </Box>
           ) : !property ? (
-            <Text mt={6} role="status">
-              Loading property…
-            </Text>
+            <PropertyDetailSkeleton />
           ) : (
             <>
               <Heading as="h1" mt={6} mb={3}>

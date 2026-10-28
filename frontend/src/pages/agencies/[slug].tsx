@@ -1,4 +1,5 @@
 import SEO from "@/components/seo";
+import { AgencyDetailSkeleton } from "@/components/ui/page-skeletons";
 import {
   agencyRatingSummary,
   fetchAgency,
@@ -58,9 +59,7 @@ export default function AgencyPage() {
               {error}
             </Heading>
           ) : !agency ? (
-            <Text mt={6} role="status">
-              Loading rental agency…
-            </Text>
+            <AgencyDetailSkeleton />
           ) : (
             <>
               <Flex

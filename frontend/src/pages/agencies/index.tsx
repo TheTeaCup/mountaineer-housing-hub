@@ -1,4 +1,5 @@
 import SEO from "@/components/seo";
+import { AgencyGridSkeleton } from "@/components/ui/page-skeletons";
 import {
   agencyRatingSummary,
   fetchAgencies,
@@ -39,7 +40,7 @@ export default function AgenciesPage() {
             experiences students have shared across those listings.
           </Text>
           {loading ? (
-            <Text role="status">Loading rental agencies…</Text>
+            <AgencyGridSkeleton />
           ) : error ? (
             <Text role="alert" color="fg.error">
               {error}

@@ -1,4 +1,5 @@
 import { useAuth } from "@/components/ui/auth-provider";
+import { FormPageSkeleton } from "@/components/ui/page-skeletons";
 import SignInRequired from "@/components/ui/sign-in-required";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
@@ -60,7 +61,7 @@ export default function ApartmentForm() {
       active = false;
     };
   }, [session]);
-  if (loading) return <Text>Loading…</Text>;
+  if (loading) return <FormPageSkeleton />;
   if (!session)
     return (
       <SignInRequired

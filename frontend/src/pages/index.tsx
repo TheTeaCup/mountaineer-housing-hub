@@ -1,5 +1,6 @@
 import PropertiesCard from "@/components/properties/card";
 import SEO from "@/components/seo";
+import { PropertyGridSkeleton } from "@/components/ui/page-skeletons";
 import { useProperties } from "@/hooks/use-properties";
 import {
   Box,
@@ -143,7 +144,7 @@ export default function Home() {
           </Flex>
 
           {loading ? (
-            <Text role="status">Loading properties…</Text>
+            <PropertyGridSkeleton count={6} />
           ) : error ? (
             <Box role="alert">
               <Text mb={3}>{error}</Text>
