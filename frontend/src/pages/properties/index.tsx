@@ -1,6 +1,7 @@
 import PropertiesCard from "@/components/properties/card";
 import SEO from "@/components/seo";
 import { PropertyGridSkeleton } from "@/components/ui/page-skeletons";
+import PaginationControls from "@/components/ui/pagination-controls";
 import { useProperties } from "@/hooks/use-properties";
 import {
   Box,
@@ -15,11 +16,22 @@ import {
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+const PAGE_SIZE = 12;
+
 export default function PropertiesList() {
   const router = useRouter();
   const query = typeof router.query.q === "string" ? router.query.q : "";
   const [input, setInput] = useState("");
+  const [page, setPage] = useState(1);
   const { properties, loading, error, retry } = useProperties(query, 500);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(properties.length / PAGE_SIZE)),
+  );
+  const paginatedProperties = properties.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
   return (
     <>
       <SEO title="Properties" />
@@ -39,6 +51,7 @@ export default function PropertiesList() {
             mb={7}
             onSubmit={(e) => {
               e.preventDefault();
+              setPage(1);
               void router.push(
                 `/properties${input.trim() ? `?q=${encodeURIComponent(input.trim())}` : ""}`,
               );
@@ -59,6 +72,7 @@ export default function PropertiesList() {
                 variant="outline"
                 onClick={() => {
                   setInput("");
+                  setPage(1);
                   void router.push("/properties");
                 }}
               >
@@ -89,10 +103,20 @@ export default function PropertiesList() {
                 {properties.length === 500 ? " (showing the first 500)" : ""}
               </Text>
               <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={7}>
-                {properties.map((property) => (
+                {paginatedProperties.map((property) => (
                   <PropertiesCard key={property.slug} property={property} />
                 ))}
               </SimpleGrid>
+              <PaginationControls
+                page={currentPage}
+                total={properties.length}
+                pageSize={PAGE_SIZE}
+                label="Properties"
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
             </>
           )}
         </Container>

@@ -4,6 +4,7 @@ import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { ColorModeButton } from "@/components/ui/color-mode";
+import PaginationControls from "@/components/ui/pagination-controls";
 import ProfileCustomization from "@/components/ui/profile-customization";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest, type MyReview } from "@/utils/api/account";
@@ -22,6 +23,8 @@ import {
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+
+const ACCOUNT_PAGE_SIZE = 5;
 
 function ReviewEditor({
   review,
@@ -153,6 +156,9 @@ export default function AccountPage() {
     { id: number; name: string; slug: string; status: string }[]
   >([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [favoritePage, setFavoritePage] = useState(1);
+  const [managedPage, setManagedPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -183,6 +189,30 @@ export default function AccountPage() {
       active = false;
     };
   }, [session]);
+  const currentFavoritePage = Math.min(
+    favoritePage,
+    Math.max(1, Math.ceil(favorites.length / ACCOUNT_PAGE_SIZE)),
+  );
+  const currentManagedPage = Math.min(
+    managedPage,
+    Math.max(1, Math.ceil(managedProperties.length / ACCOUNT_PAGE_SIZE)),
+  );
+  const currentReviewPage = Math.min(
+    reviewPage,
+    Math.max(1, Math.ceil(reviews.length / ACCOUNT_PAGE_SIZE)),
+  );
+  const paginatedFavorites = favorites.slice(
+    (currentFavoritePage - 1) * ACCOUNT_PAGE_SIZE,
+    currentFavoritePage * ACCOUNT_PAGE_SIZE,
+  );
+  const paginatedManagedProperties = managedProperties.slice(
+    (currentManagedPage - 1) * ACCOUNT_PAGE_SIZE,
+    currentManagedPage * ACCOUNT_PAGE_SIZE,
+  );
+  const paginatedReviews = reviews.slice(
+    (currentReviewPage - 1) * ACCOUNT_PAGE_SIZE,
+    currentReviewPage * ACCOUNT_PAGE_SIZE,
+  );
   const panel = {
     bg: "var(--site-surface)",
     p: 6,
@@ -223,7 +253,7 @@ export default function AccountPage() {
                 </Heading>
                 {favorites.length ? (
                   <Stack gap={4}>
-                    {favorites.map((favorite) => (
+                    {paginatedFavorites.map((favorite) => (
                       <Box key={favorite.slug}>
                         <NextLink href={`/properties/${favorite.slug}`}>
                           {favorite.name}
@@ -234,6 +264,13 @@ export default function AccountPage() {
                         <FavoriteButton slug={favorite.slug} />
                       </Box>
                     ))}
+                    <PaginationControls
+                      page={currentFavoritePage}
+                      total={favorites.length}
+                      pageSize={ACCOUNT_PAGE_SIZE}
+                      label="Saved apartments"
+                      onPageChange={setFavoritePage}
+                    />
                   </Stack>
                 ) : (
                   <Text>
@@ -252,7 +289,7 @@ export default function AccountPage() {
                     Staff granted you access to maintain these listings.
                   </Text>
                   <Stack gap={3}>
-                    {managedProperties.map((property) => (
+                    {paginatedManagedProperties.map((property) => (
                       <Box key={property.id}>
                         <NextLink href={`/account/properties/${property.id}`}>
                           {property.name} — Edit listing →
@@ -262,6 +299,13 @@ export default function AccountPage() {
                         </Text>
                       </Box>
                     ))}
+                    <PaginationControls
+                      page={currentManagedPage}
+                      total={managedProperties.length}
+                      pageSize={ACCOUNT_PAGE_SIZE}
+                      label="Managed properties"
+                      onPageChange={setManagedPage}
+                    />
                   </Stack>
                 </Box>
               )}
@@ -273,13 +317,20 @@ export default function AccountPage() {
                   <Text>Loading reviews…</Text>
                 ) : reviews.length ? (
                   <Stack gap={4}>
-                    {reviews.map((review) => (
+                    {paginatedReviews.map((review) => (
                       <ReviewEditor
                         key={review.id}
                         review={review}
                         refresh={refreshReviews}
                       />
                     ))}
+                    <PaginationControls
+                      page={currentReviewPage}
+                      total={reviews.length}
+                      pageSize={ACCOUNT_PAGE_SIZE}
+                      label="My reviews"
+                      onPageChange={setReviewPage}
+                    />
                   </Stack>
                 ) : (
                   <Text>

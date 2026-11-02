@@ -4,6 +4,7 @@ import ReviewPhotoGrid, {
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
+import PaginationControls from "@/components/ui/pagination-controls";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import { formatPhoneNumber } from "@/utils/format-phone";
@@ -14,6 +15,7 @@ import {
   Flex,
   Heading,
   Input,
+  NativeSelect,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -72,6 +74,8 @@ interface StaffProperty {
   agency_name: string | null;
 }
 
+const ADMIN_PAGE_SIZE = 10;
+
 export default function StaffDashboard({
   section,
 }: {
@@ -89,10 +93,18 @@ export default function StaffDashboard({
           ? "Apartment submissions"
           : "Review submissions";
   const [reviews, setReviews] = useState<StaffReview[]>([]);
+  const [reviewPage, setReviewPage] = useState(1);
   const [apartments, setApartments] = useState<ApartmentSubmission[]>([]);
   const [agencies, setAgencies] = useState<RentalAgency[]>([]);
   const [properties, setProperties] = useState<StaffProperty[]>([]);
   const [propertySearch, setPropertySearch] = useState("");
+  const [submissionFilter, setSubmissionFilter] = useState("all");
+  const [propertyStatusFilter, setPropertyStatusFilter] = useState("all");
+  const [apartmentPage, setApartmentPage] = useState(1);
+  const [propertyPage, setPropertyPage] = useState(1);
+  const [agencySearch, setAgencySearch] = useState("");
+  const [agencyFilter, setAgencyFilter] = useState("all");
+  const [agencyPage, setAgencyPage] = useState(1);
   const [editId, setEditId] = useState<number | null>(null);
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -174,32 +186,94 @@ export default function StaffDashboard({
   const normalizedPropertySearch = propertySearch.trim().toLowerCase();
   const filteredApartments = useMemo(
     () =>
-      apartments.filter((apartment) =>
-        [
-          apartment.name,
-          apartment.address,
-          apartment.agency_name,
-          apartment.proposed_agency_name,
-          apartment.username,
-        ].some((value) =>
-          value?.toLowerCase().includes(normalizedPropertySearch),
-        ),
+      apartments.filter(
+        (apartment) =>
+          (submissionFilter === "all" ||
+            apartment.submission_kind === submissionFilter) &&
+          [
+            apartment.name,
+            apartment.address,
+            apartment.agency_name,
+            apartment.proposed_agency_name,
+            apartment.username,
+          ].some((value) =>
+            value?.toLowerCase().includes(normalizedPropertySearch),
+          ),
       ),
-    [apartments, normalizedPropertySearch],
+    [apartments, normalizedPropertySearch, submissionFilter],
   );
   const filteredProperties = useMemo(
     () =>
-      properties.filter((property) =>
-        [
-          property.name,
-          property.address,
-          property.agency_name,
-          property.status,
-        ].some((value) =>
-          value?.toLowerCase().includes(normalizedPropertySearch),
-        ),
+      properties.filter(
+        (property) =>
+          (propertyStatusFilter === "all" ||
+            property.status === propertyStatusFilter) &&
+          [
+            property.name,
+            property.address,
+            property.agency_name,
+            property.status,
+          ].some((value) =>
+            value?.toLowerCase().includes(normalizedPropertySearch),
+          ),
       ),
-    [normalizedPropertySearch, properties],
+    [normalizedPropertySearch, properties, propertyStatusFilter],
+  );
+  const normalizedAgencySearch = agencySearch.trim().toLowerCase();
+  const filteredAgencies = useMemo(
+    () =>
+      agencies.filter((agency) => {
+        const matchesSearch = [
+          agency.name,
+          agency.website,
+          agency.phone,
+          agency.email,
+        ].some((value) =>
+          value?.toLowerCase().includes(normalizedAgencySearch),
+        );
+        const matchesFilter =
+          agencyFilter === "all" ||
+          (agencyFilter === "linked" && agency.property_count > 0) ||
+          (agencyFilter === "unlinked" && agency.property_count === 0) ||
+          (agencyFilter === "missing-contact" &&
+            !agency.website &&
+            !agency.phone &&
+            !agency.email);
+        return matchesSearch && matchesFilter;
+      }),
+    [agencies, agencyFilter, normalizedAgencySearch],
+  );
+  const currentApartmentPage = Math.min(
+    apartmentPage,
+    Math.max(1, Math.ceil(filteredApartments.length / ADMIN_PAGE_SIZE)),
+  );
+  const currentPropertyPage = Math.min(
+    propertyPage,
+    Math.max(1, Math.ceil(filteredProperties.length / ADMIN_PAGE_SIZE)),
+  );
+  const currentAgencyPage = Math.min(
+    agencyPage,
+    Math.max(1, Math.ceil(filteredAgencies.length / ADMIN_PAGE_SIZE)),
+  );
+  const currentReviewPage = Math.min(
+    reviewPage,
+    Math.max(1, Math.ceil(reviews.length / ADMIN_PAGE_SIZE)),
+  );
+  const paginatedApartments = filteredApartments.slice(
+    (currentApartmentPage - 1) * ADMIN_PAGE_SIZE,
+    currentApartmentPage * ADMIN_PAGE_SIZE,
+  );
+  const paginatedProperties = filteredProperties.slice(
+    (currentPropertyPage - 1) * ADMIN_PAGE_SIZE,
+    currentPropertyPage * ADMIN_PAGE_SIZE,
+  );
+  const paginatedAgencies = filteredAgencies.slice(
+    (currentAgencyPage - 1) * ADMIN_PAGE_SIZE,
+    currentAgencyPage * ADMIN_PAGE_SIZE,
+  );
+  const paginatedReviews = reviews.slice(
+    (currentReviewPage - 1) * ADMIN_PAGE_SIZE,
+    currentReviewPage * ADMIN_PAGE_SIZE,
   );
   const panel = {
     bg: "var(--site-surface)",
@@ -272,7 +346,7 @@ export default function StaffDashboard({
                   {!reviews.length && (
                     <Text>No reviews waiting for approval.</Text>
                   )}
-                  {reviews.map((review) => (
+                  {paginatedReviews.map((review) => (
                     <Box {...panel} key={review.id}>
                       <Heading as="h3" size="md">
                         {review.name}
@@ -310,6 +384,13 @@ export default function StaffDashboard({
                       </Flex>
                     </Box>
                   ))}
+                  <PaginationControls
+                    page={currentReviewPage}
+                    total={reviews.length}
+                    pageSize={ADMIN_PAGE_SIZE}
+                    label="Pending reviews"
+                    onPageChange={setReviewPage}
+                  />
                 </Stack>
               ) : tab === "apartments" ? (
                 <Stack gap={4}>
@@ -326,11 +407,68 @@ export default function StaffDashboard({
                       aria-label="Search property administration"
                       placeholder="Search properties and pending suggestions…"
                       value={propertySearch}
-                      onChange={(event) =>
-                        setPropertySearch(event.target.value)
-                      }
+                      onChange={(event) => {
+                        setPropertySearch(event.target.value);
+                        setApartmentPage(1);
+                        setPropertyPage(1);
+                      }}
                     />
-                    {normalizedPropertySearch && (
+                    <Flex gap={4} mt={4} flexWrap="wrap">
+                      <Box flex="1" minW="220px">
+                        <Text as="label" fontSize="sm" fontWeight="semibold">
+                          Pending suggestion type
+                        </Text>
+                        <NativeSelect.Root mt={1}>
+                          <NativeSelect.Field
+                            aria-label="Filter pending suggestions by type"
+                            value={submissionFilter}
+                            onChange={(event) => {
+                              setSubmissionFilter(event.currentTarget.value);
+                              setApartmentPage(1);
+                            }}
+                          >
+                            <option value="all">All suggestions</option>
+                            <option value="property">Properties only</option>
+                            <option value="agency">Agencies only</option>
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </Box>
+                      <Box flex="1" minW="220px">
+                        <Text as="label" fontSize="sm" fontWeight="semibold">
+                          Existing property status
+                        </Text>
+                        <NativeSelect.Root mt={1}>
+                          <NativeSelect.Field
+                            aria-label="Filter existing properties by status"
+                            value={propertyStatusFilter}
+                            onChange={(event) => {
+                              setPropertyStatusFilter(
+                                event.currentTarget.value,
+                              );
+                              setPropertyPage(1);
+                            }}
+                          >
+                            <option value="all">All statuses</option>
+                            {Array.from(
+                              new Set(
+                                properties.map((property) => property.status),
+                              ),
+                            )
+                              .sort()
+                              .map((status) => (
+                                <option key={status} value={status}>
+                                  {status.replace(/_/g, " ")}
+                                </option>
+                              ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </Box>
+                    </Flex>
+                    {(normalizedPropertySearch ||
+                      submissionFilter !== "all" ||
+                      propertyStatusFilter !== "all") && (
                       <Flex
                         align="center"
                         justify="space-between"
@@ -344,9 +482,15 @@ export default function StaffDashboard({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setPropertySearch("")}
+                          onClick={() => {
+                            setPropertySearch("");
+                            setSubmissionFilter("all");
+                            setPropertyStatusFilter("all");
+                            setApartmentPage(1);
+                            setPropertyPage(1);
+                          }}
                         >
-                          Clear search
+                          Clear search and filters
                         </Button>
                       </Flex>
                     )}
@@ -362,12 +506,12 @@ export default function StaffDashboard({
                   </Text>
                   {!filteredApartments.length && (
                     <Text>
-                      {normalizedPropertySearch
-                        ? "No pending suggestions match this search."
+                      {normalizedPropertySearch || submissionFilter !== "all"
+                        ? "No pending suggestions match this search and filter."
                         : "No apartment suggestions are waiting for review."}
                     </Text>
                   )}
-                  {filteredApartments.map((apartment) => (
+                  {paginatedApartments.map((apartment) => (
                     <Box {...panel} key={apartment.id}>
                       <Heading as="h3" size="md">
                         {apartment.name}
@@ -416,17 +560,25 @@ export default function StaffDashboard({
                       </Flex>
                     </Box>
                   ))}
+                  <PaginationControls
+                    page={currentApartmentPage}
+                    total={filteredApartments.length}
+                    pageSize={ADMIN_PAGE_SIZE}
+                    label="Pending suggestions"
+                    onPageChange={setApartmentPage}
+                  />
                   <Heading as="h2" size="lg" mt={6}>
                     Existing properties ({filteredProperties.length})
                   </Heading>
                   {!filteredProperties.length && (
                     <Text>
-                      {normalizedPropertySearch
-                        ? "No existing properties match this search."
+                      {normalizedPropertySearch ||
+                      propertyStatusFilter !== "all"
+                        ? "No existing properties match this search and filter."
                         : "No properties are in the catalog yet."}
                     </Text>
                   )}
-                  {filteredProperties.map((property) => (
+                  {paginatedProperties.map((property) => (
                     <Box {...panel} key={property.id}>
                       <Heading as="h3" size="md" mb={2}>
                         {property.name}
@@ -445,6 +597,13 @@ export default function StaffDashboard({
                       </NextLink>
                     </Box>
                   ))}
+                  <PaginationControls
+                    page={currentPropertyPage}
+                    total={filteredProperties.length}
+                    pageSize={ADMIN_PAGE_SIZE}
+                    label="Existing properties"
+                    onPageChange={setPropertyPage}
+                  />
                 </Stack>
               ) : tab === "agencies" ? (
                 <Stack gap={4}>
@@ -456,10 +615,87 @@ export default function StaffDashboard({
                     names. Every agency appears in the public directory; link
                     its properties here so its public profile is useful.
                   </Text>
-                  {!agencies.length && (
-                    <Text>No rental agencies are in the catalog yet.</Text>
+                  <Box {...panel}>
+                    <Heading as="h2" size="md" mb={3}>
+                      Find an agency
+                    </Heading>
+                    <Flex gap={4} flexWrap="wrap" align="end">
+                      <Box flex="2" minW="240px">
+                        <Text as="label" fontSize="sm" fontWeight="semibold">
+                          Search
+                        </Text>
+                        <Input
+                          mt={1}
+                          type="search"
+                          aria-label="Search rental agencies"
+                          placeholder="Search name or contact details…"
+                          value={agencySearch}
+                          onChange={(event) => {
+                            setAgencySearch(event.currentTarget.value);
+                            setAgencyPage(1);
+                          }}
+                        />
+                      </Box>
+                      <Box flex="1" minW="220px">
+                        <Text as="label" fontSize="sm" fontWeight="semibold">
+                          Filter
+                        </Text>
+                        <NativeSelect.Root mt={1}>
+                          <NativeSelect.Field
+                            aria-label="Filter rental agencies"
+                            value={agencyFilter}
+                            onChange={(event) => {
+                              setAgencyFilter(event.currentTarget.value);
+                              setAgencyPage(1);
+                            }}
+                          >
+                            <option value="all">All agencies</option>
+                            <option value="linked">
+                              Has linked properties
+                            </option>
+                            <option value="unlinked">
+                              No linked properties
+                            </option>
+                            <option value="missing-contact">
+                              Missing contact details
+                            </option>
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </Box>
+                    </Flex>
+                    {(normalizedAgencySearch || agencyFilter !== "all") && (
+                      <Flex
+                        mt={3}
+                        align="center"
+                        justify="space-between"
+                        gap={3}
+                      >
+                        <Text fontSize="sm">
+                          {filteredAgencies.length} matching agencies
+                        </Text>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setAgencySearch("");
+                            setAgencyFilter("all");
+                            setAgencyPage(1);
+                          }}
+                        >
+                          Clear search and filter
+                        </Button>
+                      </Flex>
+                    )}
+                  </Box>
+                  {!filteredAgencies.length && (
+                    <Text>
+                      {normalizedAgencySearch || agencyFilter !== "all"
+                        ? "No agencies match these filters."
+                        : "No rental agencies are in the catalog yet."}
+                    </Text>
                   )}
-                  {agencies.map((agency) => (
+                  {paginatedAgencies.map((agency) => (
                     <Box {...panel} key={agency.id}>
                       <Heading as="h3" size="md">
                         {agency.name}
@@ -496,6 +732,13 @@ export default function StaffDashboard({
                       </NextLink>
                     </Box>
                   ))}
+                  <PaginationControls
+                    page={currentAgencyPage}
+                    total={filteredAgencies.length}
+                    pageSize={ADMIN_PAGE_SIZE}
+                    label="Rental agencies"
+                    onPageChange={setAgencyPage}
+                  />
                 </Stack>
               ) : (
                 <>

@@ -1,8 +1,11 @@
+import PaginationControls from "@/components/ui/pagination-controls";
 import UserAvatar from "@/components/ui/user-avatar";
 import { accountRequest, type AccountProfile } from "@/utils/api/account";
 import { Box, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import ReviewPhotoGrid, { type ReviewPhoto } from "./review-photo-grid";
+
+const PAGE_SIZE = 5;
 
 export default function PropertyReviews({ slug }: { slug: string }) {
   const [reviews, setReviews] = useState<
@@ -17,6 +20,7 @@ export default function PropertyReviews({ slug }: { slug: string }) {
       photos: ReviewPhoto[];
     }[]
   >([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -25,7 +29,10 @@ export default function PropertyReviews({ slug }: { slug: string }) {
       `/properties/${encodeURIComponent(slug)}/reviews`,
     )
       .then((data) => {
-        if (active) setReviews(data);
+        if (active) {
+          setReviews(data);
+          setPage(1);
+        }
       })
       .catch(() => {
         if (active) setError("Reviews are temporarily unavailable.");
@@ -37,6 +44,14 @@ export default function PropertyReviews({ slug }: { slug: string }) {
       active = false;
     };
   }, [slug]);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(reviews.length / PAGE_SIZE)),
+  );
+  const paginatedReviews = reviews.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
   return (
     <Box mt={8}>
       <Heading as="h2" size="lg" mb={4}>
@@ -50,7 +65,7 @@ export default function PropertyReviews({ slug }: { slug: string }) {
         <Text>No published reviews yet.</Text>
       ) : (
         <Stack gap={4}>
-          {reviews.map((review) => (
+          {paginatedReviews.map((review) => (
             <Box
               key={review.id}
               p={5}
@@ -75,6 +90,13 @@ export default function PropertyReviews({ slug }: { slug: string }) {
               <ReviewPhotoGrid photos={review.photos} />
             </Box>
           ))}
+          <PaginationControls
+            page={currentPage}
+            total={reviews.length}
+            pageSize={PAGE_SIZE}
+            label="Student reviews"
+            onPageChange={setPage}
+          />
         </Stack>
       )}
     </Box>

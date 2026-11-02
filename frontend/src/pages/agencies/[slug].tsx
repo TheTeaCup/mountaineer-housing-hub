@@ -1,5 +1,6 @@
 import SEO from "@/components/seo";
 import { AgencyDetailSkeleton } from "@/components/ui/page-skeletons";
+import PaginationControls from "@/components/ui/pagination-controls";
 import {
   agencyRatingSummary,
   fetchAgency,
@@ -21,6 +22,8 @@ import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+const PAGE_SIZE = 10;
+
 export default function AgencyPage() {
   const router = useRouter();
   const slug = typeof router.query.slug === "string" ? router.query.slug : "";
@@ -29,13 +32,17 @@ export default function AgencyPage() {
     agency: AgencyDetail | null;
     error: string;
   }>({ slug: "", agency: null, error: "" });
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!slug) return;
     const controller = new AbortController();
     fetchAgency(slug, controller.signal)
       .then((agency) => {
-        if (!controller.signal.aborted) setResult({ slug, agency, error: "" });
+        if (!controller.signal.aborted) {
+          setResult({ slug, agency, error: "" });
+          setPage(1);
+        }
       })
       .catch((requestError: Error) => {
         if (!controller.signal.aborted)
@@ -47,6 +54,15 @@ export default function AgencyPage() {
   const agency = result.slug === slug ? result.agency : null;
   const error = result.slug === slug ? result.error : "";
   const website = safeUrl(agency?.website_url);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil((agency?.properties.length ?? 0) / PAGE_SIZE)),
+  );
+  const paginatedProperties =
+    agency?.properties.slice(
+      (currentPage - 1) * PAGE_SIZE,
+      currentPage * PAGE_SIZE,
+    ) ?? [];
 
   return (
     <>
@@ -126,7 +142,7 @@ export default function AgencyPage() {
                 <Text>No published properties are linked to this agency.</Text>
               ) : (
                 <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>
-                  {agency.properties.map((property) => (
+                  {paginatedProperties.map((property) => (
                     <NextLink
                       key={property.slug}
                       href={`/properties/${property.slug}`}
@@ -155,6 +171,15 @@ export default function AgencyPage() {
                     </NextLink>
                   ))}
                 </SimpleGrid>
+              )}
+              {agency.properties.length > 0 && (
+                <PaginationControls
+                  page={currentPage}
+                  total={agency.properties.length}
+                  pageSize={PAGE_SIZE}
+                  label={`${agency.name} properties`}
+                  onPageChange={setPage}
+                />
               )}
             </>
           )}
