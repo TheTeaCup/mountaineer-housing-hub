@@ -12,6 +12,7 @@ import {
   Button,
   Container,
   Field,
+  Flex,
   Heading,
   Input,
   NativeSelect,
@@ -21,7 +22,7 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface PropertyForm {
   submission_kind?: "property" | "agency";
@@ -45,6 +46,12 @@ interface PropertyForm {
   photos: StaffPropertyPhoto[];
   floor_plans: FloorPlan[];
 }
+interface AgencyOption {
+  id: number;
+  name: string;
+  website: string | null;
+  phone: string | null;
+}
 const fields = [
   ["name", "Property / community name", 255],
   ["address", "Street address", 255],
@@ -67,8 +74,10 @@ export default function EditProperty({
   const router = useRouter();
   const { profile, error: accessError } = useAccount();
   const role = profile?.role;
+  const formRef = useRef<HTMLFormElement | null>(null);
   const [property, setProperty] = useState<PropertyForm | null>(null);
-  const [agencies, setAgencies] = useState<{ id: number; name: string }[]>([]);
+  const [agencies, setAgencies] = useState<AgencyOption[]>([]);
+  const [selectedAgencyId, setSelectedAgencyId] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
@@ -81,7 +90,7 @@ export default function EditProperty({
       accountRequest<PropertyForm>(
         `/staff/${suggestion ? "apartments" : "properties"}/${id}`,
       ),
-      accountRequest<{ id: number; name: string }[]>("/account/agencies"),
+      accountRequest<AgencyOption[]>("/account/agencies"),
     ])
       .then(([property, agencies]) => {
         if (active) {
@@ -101,6 +110,9 @@ export default function EditProperty({
             floor_plans: property.floor_plans ?? [],
           });
           setAgencies(agencies);
+          setSelectedAgencyId(
+            property.agency_id === null ? "" : String(property.agency_id),
+          );
         }
       })
       .catch((error: Error) => {
@@ -110,6 +122,20 @@ export default function EditProperty({
       active = false;
     };
   }, [assigned, id, role, suggestion]);
+  const selectedAgency = agencies.find(
+    (agency) => String(agency.id) === selectedAgencyId,
+  );
+  function applyAgencyContact(field: "website" | "phone") {
+    const value = selectedAgency?.[field];
+    const input = formRef.current?.elements.namedItem(field);
+    if (!value || !(input instanceof HTMLInputElement)) return;
+    input.value = field === "phone" ? formatPhoneNumber(value) : value;
+    input.focus();
+    notifySuccess(
+      `Agency ${field} copied`,
+      `The ${field} from ${selectedAgency.name} is now in the property form.`,
+    );
+  }
   const readinessWarnings = property
     ? [
         property.latitude === null ||
@@ -178,6 +204,7 @@ export default function EditProperty({
             <Box
               key={property.id}
               as="form"
+              ref={formRef}
               onSubmit={async (event) => {
                 event.preventDefault();
                 setPending(true);
@@ -329,56 +356,75 @@ export default function EditProperty({
                           ? "Agency name"
                           : label}
                       </Field.Label>
-                      <Input
-                        name={name}
-                        defaultValue={
-                          name === "phone"
-                            ? formatPhoneNumber(property.phone)
-                            : (property[name] ?? "")
-                        }
-                        maxLength={max}
-                        required={["name", "address", "city", "state"].includes(
-                          name,
-                        )}
-                        type={
-                          name === "website"
-                            ? "url"
-                            : name === "phone"
-                              ? "tel"
-                              : ["latitude", "longitude"].includes(name)
-                                ? "number"
-                                : "text"
-                        }
-                        step={
-                          ["latitude", "longitude"].includes(name)
-                            ? "any"
-                            : undefined
-                        }
-                        inputMode={name === "phone" ? "tel" : undefined}
-                        onBlur={
-                          name === "phone"
-                            ? (event) => {
-                                event.currentTarget.value = formatPhoneNumber(
-                                  event.currentTarget.value,
-                                );
-                              }
-                            : undefined
-                        }
-                        min={
-                          name === "latitude"
-                            ? -90
-                            : name === "longitude"
-                              ? -180
+                      <Flex gap={2} align="center" flexWrap="wrap">
+                        <Input
+                          flex="1"
+                          minW="220px"
+                          name={name}
+                          defaultValue={
+                            name === "phone"
+                              ? formatPhoneNumber(property.phone)
+                              : (property[name] ?? "")
+                          }
+                          maxLength={max}
+                          required={[
+                            "name",
+                            "address",
+                            "city",
+                            "state",
+                          ].includes(name)}
+                          type={
+                            name === "website"
+                              ? "url"
+                              : name === "phone"
+                                ? "tel"
+                                : ["latitude", "longitude"].includes(name)
+                                  ? "number"
+                                  : "text"
+                          }
+                          step={
+                            ["latitude", "longitude"].includes(name)
+                              ? "any"
                               : undefined
-                        }
-                        max={
-                          name === "latitude"
-                            ? 90
-                            : name === "longitude"
-                              ? 180
+                          }
+                          inputMode={name === "phone" ? "tel" : undefined}
+                          onBlur={
+                            name === "phone"
+                              ? (event) => {
+                                  event.currentTarget.value = formatPhoneNumber(
+                                    event.currentTarget.value,
+                                  );
+                                }
                               : undefined
-                        }
-                      />
+                          }
+                          min={
+                            name === "latitude"
+                              ? -90
+                              : name === "longitude"
+                                ? -180
+                                : undefined
+                          }
+                          max={
+                            name === "latitude"
+                              ? 90
+                              : name === "longitude"
+                                ? 180
+                                : undefined
+                          }
+                        />
+                        {(name === "website" || name === "phone") &&
+                          selectedAgency?.[name] && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              flexShrink={0}
+                              onClick={() => applyAgencyContact(name)}
+                            >
+                              Use agency {name}
+                            </Button>
+                          )}
+                      </Flex>
                     </Field.Root>
                   ))}
                 {property.submission_kind !== "agency" && (
@@ -412,6 +458,9 @@ export default function EditProperty({
                         <NativeSelect.Field
                           name="agency_id"
                           defaultValue={property.agency_id ?? ""}
+                          onChange={(event) =>
+                            setSelectedAgencyId(event.currentTarget.value)
+                          }
                         >
                           <option value="">No separate agency known</option>
                           {agencies.map((agency) => (
