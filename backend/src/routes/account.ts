@@ -157,7 +157,9 @@ export function createAccountRouter(deps: AccountDependencies) {
   });
   router.get("/agencies", async (_req, res) => {
     res.json(
-      await deps.query("SELECT id, name FROM agencies ORDER BY name LIMIT 500"),
+      await deps.query(
+        "SELECT id, name, website_url AS website, phone FROM agencies ORDER BY name LIMIT 500",
+      ),
     );
   });
   router.put("/favorites/:slug", async (req, res) => {
