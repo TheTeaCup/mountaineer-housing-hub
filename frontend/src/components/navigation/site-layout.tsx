@@ -32,7 +32,7 @@ export default function SiteLayout({
       >
         {children}
       </Box>
-      <Footer />
+      {!map && <Footer />}
     </Box>
   );
 }

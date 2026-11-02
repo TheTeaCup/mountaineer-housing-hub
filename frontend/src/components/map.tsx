@@ -2,14 +2,16 @@ import { useColorMode } from "@/components/ui/color-mode";
 import { useProperties } from "@/hooks/use-properties";
 import { mapLocations } from "@/utils/api/properties";
 import { registerPMTiles } from "@/utils/pmtiles";
-import { Box, Button, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, IconButton, Text } from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import protomaps from "protomaps-themes-base";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LuChevronDown, LuChevronUp } from "react-icons/lu";
 
-const houseIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path d="M6 23L24 7L42 23" fill="none" stroke="#111111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21V41H38V21" fill="#ffc72c" stroke="#111111" stroke-width="4" stroke-linejoin="round"/><path d="M19 41V29H29V41" fill="white" stroke="#111111" stroke-width="3"/></svg>`;
+const apartmentIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="9" y="5" width="30" height="38" rx="2" fill="#ffc72c" stroke="#111111" stroke-width="4"/><path d="M16 13h5v5h-5zm11 0h5v5h-5zM16 23h5v5h-5zm11 0h5v5h-5z" fill="#111111"/><path d="M20 43V33h8v10" fill="#ffffff" stroke="#111111" stroke-width="3"/></svg>`;
+const townhomeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path d="M4 20L13 9l11 11L35 9l9 11v23H4z" fill="#2563eb" stroke="#111111" stroke-width="4" stroke-linejoin="round"/><path d="M24 20v23M10 28h7v6h-7zm21 0h7v6h-7z" fill="#ffffff" stroke="#111111" stroke-width="3"/><path d="M11 43V36h6v7m14 0V36h6v7" fill="#ffffff" stroke="#111111" stroke-width="3"/></svg>`;
 
 export default function MapComponent({
   propertyQuery,
@@ -24,14 +26,15 @@ export default function MapComponent({
   const { colorMode } = useColorMode();
   const { properties, loading, error, retry } = useProperties("", 500);
   const [mapError, setMapError] = useState("");
+  const [keyOpen, setKeyOpen] = useState(true);
   const mapped = useMemo(() => mapLocations(properties), [properties]);
   const focused = mapped.find((property) => property.slug === propertyQuery);
   useEffect(() => {
     registerPMTiles();
     if (!containerRef.current) return;
     let disposed = false;
-    let iconUrl: string | undefined;
-    let iconImage: HTMLImageElement | undefined;
+    const iconUrls: string[] = [];
+    const iconImages: HTMLImageElement[] = [];
     const map = new maplibregl.Map({
       container: containerRef.current,
       center: focused
@@ -77,6 +80,7 @@ export default function MapComponent({
             id: property.id,
             name: property.name,
             slug: property.slug,
+            propertyType: property.property_type,
           },
         })),
       };
@@ -88,23 +92,25 @@ export default function MapComponent({
         );
         map.fitBounds(bounds, { padding: 65, maxZoom: 14, duration: 0 });
       }
-      iconUrl = URL.createObjectURL(
-        new Blob([houseIcon], { type: "image/svg+xml" }),
-      );
-      iconImage = new Image();
-      iconImage.onload = () => {
-        if (iconUrl) {
-          URL.revokeObjectURL(iconUrl);
-          iconUrl = undefined;
-        }
-        if (disposed || !iconImage) return;
-        map.addImage("house", iconImage);
+      const icons = [
+        { name: "apartment", svg: apartmentIcon },
+        { name: "townhome", svg: townhomeIcon },
+      ];
+      let loadedIcons = 0;
+      const addPropertyLayers = () => {
+        if (disposed) return;
         map.addLayer({
           id: "property-icons",
           type: "symbol",
           source: "properties",
           layout: {
-            "icon-image": "house",
+            "icon-image": [
+              "match",
+              ["get", "propertyType"],
+              "townhome",
+              "townhome",
+              "apartment",
+            ],
             "icon-size": 0.55,
             "icon-anchor": "center",
             "icon-allow-overlap": true,
@@ -145,12 +151,27 @@ export default function MapComponent({
           });
         }
       };
-      iconImage.src = iconUrl;
+      icons.forEach(({ name, svg }) => {
+        const iconUrl = URL.createObjectURL(
+          new Blob([svg], { type: "image/svg+xml" }),
+        );
+        const iconImage = new Image();
+        iconUrls.push(iconUrl);
+        iconImages.push(iconImage);
+        iconImage.onload = () => {
+          URL.revokeObjectURL(iconUrl);
+          if (disposed) return;
+          map.addImage(name, iconImage);
+          loadedIcons += 1;
+          if (loadedIcons === icons.length) addPropertyLayers();
+        };
+        iconImage.src = iconUrl;
+      });
     });
     return () => {
       disposed = true;
-      if (iconImage) iconImage.onload = null;
-      if (iconUrl) URL.revokeObjectURL(iconUrl);
+      iconImages.forEach((iconImage) => (iconImage.onload = null));
+      iconUrls.forEach((iconUrl) => URL.revokeObjectURL(iconUrl));
       // Preserve user navigation when changing theme or refreshing property data.
       if (mapped.length) {
         const center = map.getCenter();
@@ -173,34 +194,76 @@ export default function MapComponent({
         bg="var(--site-surface)"
         color="var(--site-fg)"
         borderRadius="lg"
-        p={4}
+        p={3}
         boxShadow="md"
       >
-        {loading ? (
-          <Text role="status">Loading property locations…</Text>
-        ) : error ? (
-          <Box role="alert">
-            <Text>{error}</Text>
-            <Button size="sm" mt={2} onClick={retry}>
-              Try again
-            </Button>
+        <Flex align="center" justify="space-between" gap={3}>
+          <Text fontWeight="semibold">Map key</Text>
+          <IconButton
+            aria-label={keyOpen ? "Minimize map key" : "Expand map key"}
+            aria-expanded={keyOpen}
+            aria-controls="map-key-content"
+            title={keyOpen ? "Minimize map key" : "Expand map key"}
+            size="xs"
+            variant="ghost"
+            onClick={() => setKeyOpen((open) => !open)}
+          >
+            {keyOpen ? <LuChevronUp /> : <LuChevronDown />}
+          </IconButton>
+        </Flex>
+        {keyOpen && (
+          <Box id="map-key-content" mt={2}>
+            {loading ? (
+              <Text role="status">Loading property locations…</Text>
+            ) : error ? (
+              <Box role="alert">
+                <Text>{error}</Text>
+                <Button size="sm" mt={2} onClick={retry}>
+                  Try again
+                </Button>
+              </Box>
+            ) : (
+              <Text role="status">
+                {mapped.length
+                  ? "Select a marker to view property details."
+                  : "No published properties have map coordinates yet."}
+              </Text>
+            )}
+            {!loading && !error && mapped.length > 0 && (
+              <Flex mt={2} gap={4} flexWrap="wrap" fontSize="sm">
+                <Flex align="center" gap={2}>
+                  <Box
+                    w="12px"
+                    h="12px"
+                    bg="#ffc72c"
+                    border="2px solid #111111"
+                    borderRadius="2px"
+                  />
+                  <Text>Apartment community</Text>
+                </Flex>
+                <Flex align="center" gap={2}>
+                  <Box
+                    w="12px"
+                    h="12px"
+                    bg="#2563eb"
+                    border="2px solid #111111"
+                    transform="rotate(45deg)"
+                  />
+                  <Text>Townhome</Text>
+                </Flex>
+              </Flex>
+            )}
+            {propertyQuery && !loading && !error && !focused && (
+              <Text mt={2} fontSize="sm">
+                This property does not have a published map location.
+              </Text>
+            )}
+            {mapError && (
+              <Text mt={2} fontSize="sm">
+                {mapError}
+              </Text>
+            )}
           </Box>
-        ) : (
-          <Text role="status">
-            {mapped.length
-              ? `${mapped.length} ${mapped.length === 1 ? "property" : "properties"} on the map. Select a house to view details.`
-              : "No published properties have map coordinates yet."}
-          </Text>
-        )}
-        {propertyQuery && !loading && !error && !focused && (
-          <Text mt={2} fontSize="sm">
-            This property does not have a published map location.
-          </Text>
-        )}
-        {mapError && (
-          <Text mt={2} fontSize="sm">
-            {mapError}
-          </Text>
         )}
       </Box>
     </Box>
