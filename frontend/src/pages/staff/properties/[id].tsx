@@ -7,6 +7,7 @@ import type { FloorPlan } from "@/types/properties";
 import { accountRequest } from "@/utils/api/account";
 import { propertyTypeLabel } from "@/utils/api/properties";
 import { formatPhoneNumber } from "@/utils/format-phone";
+import { parseSubmittedAddress } from "@/utils/parse-address";
 import {
   Box,
   Button,
@@ -16,6 +17,7 @@ import {
   Heading,
   Input,
   NativeSelect,
+  SimpleGrid,
   Stack,
   Text,
   Textarea,
@@ -78,6 +80,7 @@ export default function EditProperty({
   const [property, setProperty] = useState<PropertyForm | null>(null);
   const [agencies, setAgencies] = useState<AgencyOption[]>([]);
   const [selectedAgencyId, setSelectedAgencyId] = useState("");
+  const [creatingAgency, setCreatingAgency] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
@@ -94,6 +97,10 @@ export default function EditProperty({
     ])
       .then(([property, agencies]) => {
         if (active) {
+          const parsedAddress =
+            suggestion && property.submission_kind !== "agency"
+              ? parseSubmittedAddress(property.address)
+              : null;
           setProperty({
             ...property,
             slug:
@@ -104,14 +111,26 @@ export default function EditProperty({
                 .slice(0, 140)
                 .replace(/^-|-$/g, "") ||
                 "listing"),
-            city: property.city ?? "Boone",
-            state: property.state ?? "NC",
+            address: parsedAddress?.address ?? property.address,
+            address_line2:
+              property.address_line2 ?? parsedAddress?.addressLine2 ?? null,
+            city: property.city ?? parsedAddress?.city ?? "Boone",
+            state: property.state ?? parsedAddress?.state ?? "NC",
+            postal_code:
+              property.postal_code ?? parsedAddress?.postalCode ?? null,
             photos: property.photos ?? [],
             floor_plans: property.floor_plans ?? [],
           });
           setAgencies(agencies);
           setSelectedAgencyId(
             property.agency_id === null ? "" : String(property.agency_id),
+          );
+          setCreatingAgency(
+            property.agency_id === null &&
+              Boolean(
+                property.proposed_agency_name ||
+                property.proposed_agency_website,
+              ),
           );
         }
       })
@@ -205,6 +224,12 @@ export default function EditProperty({
               key={property.id}
               as="form"
               ref={formRef}
+              bg="var(--site-surface)"
+              borderWidth="1px"
+              borderColor="var(--site-border)"
+              borderRadius="xl"
+              boxShadow="sm"
+              p={{ base: 4, md: 6 }}
               onSubmit={async (event) => {
                 event.preventDefault();
                 setPending(true);
@@ -261,7 +286,7 @@ export default function EditProperty({
                 }
               }}
             >
-              <Stack gap={4}>
+              <Stack gap={6}>
                 {suggestion && (
                   <Text>
                     Review and correct the submitted information. Publishing
@@ -308,6 +333,17 @@ export default function EditProperty({
                   </Box>
                 )}
                 {property.submission_kind !== "agency" && (
+                  <Box>
+                    <Heading as="h2" size="md">
+                      Listing details
+                    </Heading>
+                    <Text mt={1} fontSize="sm" color="var(--site-muted)">
+                      Add the public-facing address, contact information, and
+                      map location.
+                    </Text>
+                  </Box>
+                )}
+                {property.submission_kind !== "agency" && (
                   <Field.Root required>
                     <Field.Label>
                       Property URL slug <Field.RequiredIndicator />
@@ -331,195 +367,279 @@ export default function EditProperty({
                     View public property page →
                   </NextLink>
                 )}
-                {property.submission_kind !== "agency" && (
-                  <Text>
-                    Add both coordinates to show this property on the map. Leave
-                    both blank if the location has not been verified.
-                  </Text>
-                )}
-                {fields
-                  .filter(
-                    ([name]) =>
-                      property.submission_kind !== "agency" ||
-                      ["name", "website", "phone"].includes(name),
-                  )
-                  .map(([name, label, max]) => (
-                    <Field.Root
-                      key={name}
-                      required={["name", "address", "city", "state"].includes(
-                        name,
-                      )}
-                    >
-                      <Field.Label>
-                        {name === "name" &&
-                        property.submission_kind === "agency"
-                          ? "Agency name"
-                          : label}
-                      </Field.Label>
-                      <Flex gap={2} align="center" flexWrap="wrap">
-                        <Input
-                          flex="1"
-                          minW="220px"
-                          name={name}
-                          defaultValue={
-                            name === "phone"
-                              ? formatPhoneNumber(property.phone)
-                              : (property[name] ?? "")
+                <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                  {fields
+                    .filter(
+                      ([name]) =>
+                        property.submission_kind !== "agency" ||
+                        ["name", "website", "phone"].includes(name),
+                    )
+                    .map(([name, label, max]) => (
+                      <Field.Root
+                        key={name}
+                        gridColumn={
+                          ["name", "address"].includes(name)
+                            ? { md: "span 2" }
+                            : undefined
+                        }
+                        required={["name", "address", "city", "state"].includes(
+                          name,
+                        )}
+                      >
+                        <Field.Label>
+                          {name === "name" &&
+                          property.submission_kind === "agency"
+                            ? "Agency name"
+                            : label}
+                        </Field.Label>
+                        <Flex
+                          gap={2}
+                          align={
+                            name === "website" || name === "phone"
+                              ? "flex-start"
+                              : "center"
                           }
-                          maxLength={max}
-                          required={[
-                            "name",
-                            "address",
-                            "city",
-                            "state",
-                          ].includes(name)}
-                          type={
-                            name === "website"
-                              ? "url"
-                              : name === "phone"
-                                ? "tel"
-                                : ["latitude", "longitude"].includes(name)
-                                  ? "number"
-                                  : "text"
-                          }
-                          step={
-                            ["latitude", "longitude"].includes(name)
-                              ? "any"
-                              : undefined
-                          }
-                          inputMode={name === "phone" ? "tel" : undefined}
-                          onBlur={
-                            name === "phone"
-                              ? (event) => {
-                                  event.currentTarget.value = formatPhoneNumber(
-                                    event.currentTarget.value,
-                                  );
-                                }
-                              : undefined
-                          }
-                          min={
-                            name === "latitude"
-                              ? -90
-                              : name === "longitude"
-                                ? -180
-                                : undefined
-                          }
-                          max={
-                            name === "latitude"
-                              ? 90
-                              : name === "longitude"
-                                ? 180
-                                : undefined
-                          }
-                        />
-                        {(name === "website" || name === "phone") &&
-                          selectedAgency?.[name] && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              flexShrink={0}
-                              onClick={() => applyAgencyContact(name)}
-                            >
-                              Use agency {name}
-                            </Button>
-                          )}
-                      </Flex>
-                    </Field.Root>
-                  ))}
-                {property.submission_kind !== "agency" && (
-                  <>
-                    <Field.Root>
-                      <Field.Label>Property type</Field.Label>
-                      <NativeSelect.Root>
-                        <NativeSelect.Field
-                          name="property_type"
-                          defaultValue={property.property_type}
-                        >
-                          {[
-                            "apartment_complex",
-                            "townhome",
-                            "house",
-                            "duplex",
-                            "condo",
-                            "other",
-                          ].map((type) => (
-                            <option key={type} value={type}>
-                              {propertyTypeLabel(type)}
-                            </option>
-                          ))}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
-                    </Field.Root>
-                    <Field.Root>
-                      <Field.Label>Managing agency</Field.Label>
-                      <NativeSelect.Root>
-                        <NativeSelect.Field
-                          name="agency_id"
-                          defaultValue={property.agency_id ?? ""}
-                          onChange={(event) =>
-                            setSelectedAgencyId(event.currentTarget.value)
+                          direction={
+                            name === "website" || name === "phone"
+                              ? "column"
+                              : "row"
                           }
                         >
-                          <option value="">No separate agency known</option>
-                          {agencies.map((agency) => (
-                            <option key={agency.id} value={agency.id}>
-                              {agency.name}
-                            </option>
-                          ))}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
-                      <Field.HelperText>
-                        Link a separate management company if known. Multiple
-                        buildings do not make a community a rental agency.
-                      </Field.HelperText>
-                    </Field.Root>
-                    {suggestion && (
-                      <>
-                        <Text>
-                          To create a new managing agency, leave the existing
-                          agency selection as No separate agency known and enter
-                          its details below. Clear these fields to keep the
-                          manager unknown or select an existing agency.
-                        </Text>
-                        <Field.Root>
-                          <Field.Label>
-                            Suggested managing agency name
-                          </Field.Label>
                           <Input
-                            name="proposed_agency_name"
-                            defaultValue={property.proposed_agency_name ?? ""}
-                            maxLength={255}
-                          />
-                        </Field.Root>
-                        <Field.Root>
-                          <Field.Label>
-                            Suggested managing agency website
-                          </Field.Label>
-                          <Input
-                            name="proposed_agency_website"
-                            type="url"
+                            w="100%"
+                            name={name}
                             defaultValue={
-                              property.proposed_agency_website ?? ""
+                              name === "phone"
+                                ? formatPhoneNumber(property.phone)
+                                : (property[name] ?? "")
                             }
-                            maxLength={2048}
+                            maxLength={max}
+                            required={[
+                              "name",
+                              "address",
+                              "city",
+                              "state",
+                            ].includes(name)}
+                            type={
+                              name === "website"
+                                ? "url"
+                                : name === "phone"
+                                  ? "tel"
+                                  : ["latitude", "longitude"].includes(name)
+                                    ? "number"
+                                    : "text"
+                            }
+                            step={
+                              ["latitude", "longitude"].includes(name)
+                                ? "any"
+                                : undefined
+                            }
+                            inputMode={name === "phone" ? "tel" : undefined}
+                            onBlur={
+                              name === "phone"
+                                ? (event) => {
+                                    event.currentTarget.value =
+                                      formatPhoneNumber(
+                                        event.currentTarget.value,
+                                      );
+                                  }
+                                : undefined
+                            }
+                            min={
+                              name === "latitude"
+                                ? -90
+                                : name === "longitude"
+                                  ? -180
+                                  : undefined
+                            }
+                            max={
+                              name === "latitude"
+                                ? 90
+                                : name === "longitude"
+                                  ? 180
+                                  : undefined
+                            }
                           />
-                        </Field.Root>
-                      </>
+                          {(name === "website" || name === "phone") &&
+                            selectedAgency?.[name] && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => applyAgencyContact(name)}
+                              >
+                                Use agency {name}
+                              </Button>
+                            )}
+                        </Flex>
+                        {name === "longitude" && (
+                          <Field.HelperText>
+                            Add both coordinates to display this property on the
+                            map, or leave both blank if unverified.
+                          </Field.HelperText>
+                        )}
+                      </Field.Root>
+                    ))}
+                </SimpleGrid>
+                {property.submission_kind !== "agency" && (
+                  <Box
+                    bg="var(--site-muted-surface)"
+                    borderRadius="lg"
+                    p={{ base: 4, md: 5 }}
+                  >
+                    <Heading as="h2" size="md" mb={4}>
+                      Type and management
+                    </Heading>
+                    <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                      <Field.Root>
+                        <Field.Label>Property type</Field.Label>
+                        <NativeSelect.Root>
+                          <NativeSelect.Field
+                            name="property_type"
+                            defaultValue={property.property_type}
+                          >
+                            {[
+                              "apartment_complex",
+                              "townhome",
+                              "house",
+                              "duplex",
+                              "condo",
+                              "other",
+                            ].map((type) => (
+                              <option key={type} value={type}>
+                                {propertyTypeLabel(type)}
+                              </option>
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </Field.Root>
+                      <Field.Root>
+                        <Field.Label>Managing agency</Field.Label>
+                        <NativeSelect.Root>
+                          <NativeSelect.Field
+                            name="agency_id"
+                            value={selectedAgencyId}
+                            onChange={(event) => {
+                              setSelectedAgencyId(event.currentTarget.value);
+                              setCreatingAgency(false);
+                            }}
+                          >
+                            <option value="">No agency selected</option>
+                            {agencies.map((agency) => (
+                              <option key={agency.id} value={agency.id}>
+                                {agency.name}
+                              </option>
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                        <Field.HelperText>
+                          {selectedAgency
+                            ? `Using ${selectedAgency.name} as the managing company.`
+                            : "Link a separate management company when one is known."}
+                        </Field.HelperText>
+                      </Field.Root>
+                    </SimpleGrid>
+                    {suggestion && selectedAgency && (
+                      <Box mt={4}>
+                        <Text fontSize="sm" color="var(--site-muted)">
+                          Need to create a different managing company? Click the
+                          button below to clear this selection and add one.
+                        </Text>
+                        <Button
+                          type="button"
+                          mt={2}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedAgencyId("");
+                            setCreatingAgency(true);
+                          }}
+                        >
+                          Add a new agency instead
+                        </Button>
+                      </Box>
                     )}
-                  </>
+                    {suggestion && !selectedAgency && !creatingAgency && (
+                      <Box mt={4}>
+                        <Text fontSize="sm" color="var(--site-muted)">
+                          Can’t find the managing company in the list? Click the
+                          button below to add it.
+                        </Text>
+                        <Button
+                          type="button"
+                          mt={2}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setCreatingAgency(true)}
+                        >
+                          Add a new agency
+                        </Button>
+                      </Box>
+                    )}
+                    {suggestion && !selectedAgency && creatingAgency && (
+                      <Box
+                        mt={4}
+                        bg="var(--site-surface)"
+                        borderWidth="1px"
+                        borderColor="var(--site-border)"
+                        borderRadius="md"
+                        p={4}
+                      >
+                        <Flex justify="space-between" align="center" gap={3}>
+                          <Heading as="h3" size="sm">
+                            New managing agency
+                          </Heading>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="ghost"
+                            onClick={() => setCreatingAgency(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </Flex>
+                        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mt={4}>
+                          <Field.Root>
+                            <Field.Label>Agency name</Field.Label>
+                            <Input
+                              name="proposed_agency_name"
+                              defaultValue={property.proposed_agency_name ?? ""}
+                              maxLength={255}
+                            />
+                          </Field.Root>
+                          <Field.Root>
+                            <Field.Label>Agency website</Field.Label>
+                            <Input
+                              name="proposed_agency_website"
+                              type="url"
+                              defaultValue={
+                                property.proposed_agency_website ?? ""
+                              }
+                              maxLength={2048}
+                            />
+                          </Field.Root>
+                        </SimpleGrid>
+                      </Box>
+                    )}
+                  </Box>
                 )}
-                <Field.Root>
-                  <Field.Label>Description</Field.Label>
+                <Box>
+                  <Heading as="h2" size="md" mb={1}>
+                    Description
+                  </Heading>
+                  <Text mb={3} fontSize="sm" color="var(--site-muted)">
+                    Summarize the property, location, and notable amenities.
+                  </Text>
                   <Textarea
                     name="information"
+                    aria-label="Description"
                     defaultValue={property.information ?? ""}
-                    rows={6}
+                    rows={7}
                     maxLength={10000}
                   />
-                </Field.Root>
+                </Box>
                 <Button type="submit" loading={pending}>
                   {suggestion
                     ? "Approve and publish edited suggestion"

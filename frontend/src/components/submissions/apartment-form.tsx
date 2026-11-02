@@ -216,7 +216,9 @@ export default function ApartmentForm() {
                 <Field.HelperText>
                   For a community, use its main address. Buildings within the
                   same community share one map location. For a standalone
-                  rental, use the address of that rental.
+                  rental, use the address of that rental. Include the city,
+                  state, and postal code when known—for example, 315 Homespun
+                  Hills Rd, Boone, NC, 28607.
                 </Field.HelperText>
               </Field.Root>
               <Field.Root>
