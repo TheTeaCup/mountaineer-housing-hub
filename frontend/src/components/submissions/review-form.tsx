@@ -18,9 +18,11 @@ import NextLink from "next/link";
 import { useEffect, useState } from "react";
 import ReviewPhotoPicker from "./review-photo-picker";
 import StarRating from "./star-rating";
+import SubmissionTerms, { useSubmissionTerms } from "./submission-terms";
 
 export default function ReviewForm() {
   const { session, loading } = useAuth();
+  const terms = useSubmissionTerms(!!session);
   const [properties, setProperties] = useState<
     { slug: string; name: string; agency_name?: string | null }[]
   >([]);
@@ -78,6 +80,7 @@ export default function ReviewForm() {
         as="form"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (!terms.ready) return;
           const form = e.currentTarget as unknown as HTMLFormElement;
           const data = new FormData(form);
           setPending(true);
@@ -90,6 +93,7 @@ export default function ReviewForm() {
               "Staff will review it before publication. Track its status in My Account.",
             );
             form.reset();
+            terms.setAgreed(false);
             setRating(0);
             setPhotos([]);
           } catch (err) {
@@ -179,10 +183,12 @@ export default function ReviewForm() {
             Staff review all text and photos before publication. Do not include
             private contact details or other sensitive information.
           </Text>
+          <SubmissionTerms terms={terms} disabled={pending} />
           <Button
             type="submit"
             loading={pending}
             disabled={
+              !terms.ready ||
               propertiesLoading ||
               !properties.length ||
               compressingPhotos ||

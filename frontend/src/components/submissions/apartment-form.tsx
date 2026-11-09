@@ -16,6 +16,7 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useEffect, useRef, useState } from "react";
+import SubmissionTerms, { useSubmissionTerms } from "./submission-terms";
 
 const propertyTypes = [
   ["apartment_complex", "Apartment complex / community"],
@@ -28,6 +29,7 @@ const propertyTypes = [
 
 export default function ApartmentForm() {
   const { session, loading } = useAuth();
+  const terms = useSubmissionTerms(!!session);
   const [kind, setKind] = useState("property");
   const [manager, setManager] = useState("unknown");
   const [agencies, setAgencies] = useState<{ id: number; name: string }[]>([]);
@@ -111,12 +113,15 @@ export default function ApartmentForm() {
         as="form"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (!terms.ready) return;
           const form = e.currentTarget as unknown as HTMLFormElement;
           const data = new FormData(form);
           setPending(true);
           setNotice("");
           try {
             await accountRequest("/account/apartments", "POST", {
+              terms_accepted: terms.agreed,
+              ...terms.versions,
               submission_kind: kind,
               name: data.get("name"),
               address: kind === "property" ? data.get("address") : null,
@@ -145,6 +150,7 @@ export default function ApartmentForm() {
               "Staff will verify it before publication.",
             );
             form.reset();
+            terms.setAgreed(false);
             setManager("unknown");
           } catch (err) {
             notifyError("Could not submit suggestion", err);
@@ -309,8 +315,10 @@ export default function ApartmentForm() {
               placeholder="Share anything that could help staff verify the suggestion."
             />
           </Field.Root>
+          <SubmissionTerms terms={terms} disabled={pending} />
           <Button
             type="submit"
+            disabled={!terms.ready}
             loading={pending}
             bg="#ffc72c"
             color="#111111"

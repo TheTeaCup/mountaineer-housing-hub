@@ -2,7 +2,7 @@ import { useColorMode } from "@/components/ui/color-mode";
 import { useProperties } from "@/hooks/use-properties";
 import { mapLocations } from "@/utils/api/properties";
 import { registerPMTiles } from "@/utils/pmtiles";
-import { Box, Button, Flex, IconButton, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, IconButton, Switch, Text } from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
@@ -230,8 +230,16 @@ export default function MapComponent({
               </Text>
             )}
             {!loading && !error && mapped.length > 0 && (
-              <Flex mt={2} gap={4} flexWrap="wrap" fontSize="sm">
-                <Flex align="center" gap={2}>
+              <Flex
+                as="ul"
+                mt={2}
+                gap={3}
+                direction="column"
+                fontSize="sm"
+                listStyleType="none"
+                p={0}
+              >
+                <Flex as="li" align="center" gap={2}>
                   <Box
                     w="12px"
                     h="12px"
@@ -241,7 +249,7 @@ export default function MapComponent({
                   />
                   <Text>Apartment community</Text>
                 </Flex>
-                <Flex align="center" gap={2}>
+                <Flex as="li" align="center" gap={2}>
                   <Box
                     w="12px"
                     h="12px"
@@ -253,6 +261,30 @@ export default function MapComponent({
                 </Flex>
               </Flex>
             )}
+            <Flex
+              mt={3}
+              pt={3}
+              borderTopWidth="1px"
+              borderColor="var(--site-border)"
+              align="center"
+              gap={2}
+              flexWrap="wrap"
+            >
+              <Switch.Root disabled checked={false} size="sm">
+                <Switch.HiddenInput aria-describedby="bus-routes-coming-soon" />
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+                <Switch.Label>Bus routes</Switch.Label>
+              </Switch.Root>
+              <Text
+                id="bus-routes-coming-soon"
+                fontSize="xs"
+                color="var(--site-muted)"
+              >
+                Coming soon
+              </Text>
+            </Flex>
             {propertyQuery && !loading && !error && !focused && (
               <Text mt={2} fontSize="sm">
                 This property does not have a published map location.
