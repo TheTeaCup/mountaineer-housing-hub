@@ -1,6 +1,7 @@
 import FavoriteButton from "@/components/properties/favorite-button";
 import ReviewPhotoGrid from "@/components/properties/review-photo-grid";
 import SEO from "@/components/seo";
+import SubmissionHistory from "@/components/submissions/submission-history";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -339,6 +340,7 @@ export default function AccountPage() {
                   </Text>
                 )}
               </Box>
+              <SubmissionHistory key={session.user.id} preview />
               <Box {...panel}>
                 <Heading as="h2" size="lg" mb={4}>
                   Account settings

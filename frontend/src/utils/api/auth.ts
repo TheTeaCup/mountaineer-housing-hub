@@ -47,6 +47,8 @@ async function authRequest<T>(path: string, body?: unknown): Promise<T> {
 
 export const getSession = () => authRequest<AuthSession | null>("get-session");
 export const signOut = () => authRequest("sign-out", {});
+export const signInWithEmail = (email: string, password: string) =>
+  authRequest("sign-in/email", { email, password });
 
 export function signInWithGoogle(): string {
   // A browser navigation lets the API set its OAuth state cookie first-party.

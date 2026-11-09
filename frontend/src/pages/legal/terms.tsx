@@ -7,7 +7,7 @@ import { Text } from "@chakra-ui/react";
 
 export default function TermsOfUse() {
   return (
-    <LegalLayout title="Terms of Use">
+    <LegalLayout title="Terms of Use" lastUpdated="November 9, 2026">
       <LegalSection title="1. Using Mountaineer Housing Hub">
         <Text>
           These terms govern use of Mountaineer Housing Hub, a student project
@@ -20,8 +20,11 @@ export default function TermsOfUse() {
       </LegalSection>
       <LegalSection title="2. Accounts and eligibility">
         <Text>
-          Browsing public information does not require an account. Sign-in
-          requires a verified App State Google account ending in @appstate.edu.
+          Browsing public information does not require an account. Sign-in for
+          students requires a verified App State Google account ending in
+          @appstate.edu. Staff may also create agency or external accounts that
+          sign in with an email address and password. Property editing access is
+          limited to the agencies or individual properties assigned by staff.
           Use your own account and keep it secure. Do not impersonate another
           person or bypass eligibility checks. Features may be limited, under
           development, or unavailable.

@@ -745,6 +745,9 @@ export default function StaffDashboard({
                   <Heading as="h2" size="lg" mb={3}>
                     Registered users ({total})
                   </Heading>
+                  <NextLink href="/staff/users/new">
+                    <Button mb={4}>Create agency / external account</Button>
+                  </NextLink>
                   <Box overflowX="auto" {...panel}>
                     <table
                       style={{
@@ -795,7 +798,7 @@ export default function StaffDashboard({
                               >
                                 {index === 0 ? (
                                   <NextLink href={`/staff/users/${user.id}`}>
-                                    {value}
+                                    {value} · Edit →
                                   </NextLink>
                                 ) : (
                                   value

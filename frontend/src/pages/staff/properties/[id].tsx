@@ -243,7 +243,12 @@ export default function EditProperty({
                   const edits = {
                     ...data,
                     submission_kind: property.submission_kind ?? "property",
-                    agency_id: data.agency_id ? Number(data.agency_id) : null,
+                    agency_id:
+                      assigned && role !== "staff"
+                        ? property.agency_id
+                        : data.agency_id
+                          ? Number(data.agency_id)
+                          : null,
                   };
                   const result = await accountRequest<{ propertyId?: number }>(
                     `/staff/${suggestion ? "apartments" : "properties"}/${property.id}`,
@@ -516,7 +521,9 @@ export default function EditProperty({
                       </Field.Root>
                       <Field.Root>
                         <Field.Label>Managing agency</Field.Label>
-                        <NativeSelect.Root>
+                        <NativeSelect.Root
+                          disabled={assigned && role !== "staff"}
+                        >
                           <NativeSelect.Field
                             name="agency_id"
                             value={selectedAgencyId}
@@ -535,6 +542,9 @@ export default function EditProperty({
                           <NativeSelect.Indicator />
                         </NativeSelect.Root>
                         <Field.HelperText>
+                          {assigned && role !== "staff"
+                            ? "Contact staff to change the managing agency. "
+                            : ""}
                           {selectedAgency
                             ? `Using ${selectedAgency.name} as the managing company.`
                             : "Link a separate management company when one is known."}

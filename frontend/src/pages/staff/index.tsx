@@ -1,9 +1,16 @@
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
-import type { SetupAudit } from "@/types/audit";
 import { accountRequest } from "@/utils/api/account";
-import { Box, Container, Heading, SimpleGrid, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Container,
+  Flex,
+  Heading,
+  SimpleGrid,
+  Text,
+} from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -14,24 +21,32 @@ import {
   FiUsers,
 } from "react-icons/fi";
 
+interface DashboardCounts {
+  audit: { issue_count: number; property_count: number; agency_count: number };
+  pending_submissions: number;
+  pending_reviews: number;
+  agencies: number;
+  users: number;
+}
 export default function StaffHome() {
   const { session, loading } = useAuth();
   const { profile, error } = useAccount();
-  const [audit, setAudit] = useState<SetupAudit | null>(null);
-  const [auditError, setAuditError] = useState(false);
+  const [counts, setCounts] = useState<DashboardCounts | null>(null);
+  const [countError, setCountError] = useState(false);
+  const [revision, setRevision] = useState(0);
   useEffect(() => {
     if (profile?.role !== "staff") return;
     let active = true;
     function refresh() {
-      accountRequest<SetupAudit>("/staff/audit")
+      accountRequest<DashboardCounts>("/staff/dashboard")
         .then((data) => {
           if (active) {
-            setAudit(data);
-            setAuditError(false);
+            setCounts(data);
+            setCountError(false);
           }
         })
         .catch(() => {
-          if (active) setAuditError(true);
+          if (active) setCountError(true);
         });
     }
     refresh();
@@ -40,7 +55,66 @@ export default function StaffHome() {
       active = false;
       window.removeEventListener("focus", refresh);
     };
-  }, [profile?.role]);
+  }, [profile?.role, revision]);
+  const cards = [
+    {
+      href: "/staff/audit",
+      title: "Setup audit",
+      icon: FiAlertCircle,
+      description:
+        "Find missing details, photos, floor plans, and pricing across apartments and rental agencies.",
+      count: counts?.audit.issue_count,
+      label: "setup fixes",
+      pending: true,
+      detail: counts
+        ? `${counts.audit.property_count} properties and ${counts.audit.agency_count} agencies need attention.`
+        : "",
+    },
+    {
+      href: "/staff/apartments",
+      title: "Apartments",
+      icon: FiHome,
+      description:
+        "Review suggested properties and rental agencies, and manage existing property listings.",
+      count: counts?.pending_submissions,
+      label: "pending suggestions",
+      pending: true,
+      detail: "Property and agency suggestions awaiting staff review.",
+    },
+    {
+      href: "/staff/agencies",
+      title: "Agencies",
+      icon: FiBriefcase,
+      description:
+        "Update agency names, websites, phone numbers, email addresses, and descriptions.",
+      count: counts?.agencies,
+      label: "rental agencies",
+      pending: false,
+      detail: "Rental agencies in the housing catalog.",
+    },
+    {
+      href: "/staff/reviews",
+      title: "Reviews",
+      icon: FiClipboard,
+      description:
+        "Read submitted apartment reviews. Approve reviews for publication or reject them.",
+      count: counts?.pending_reviews,
+      label: "pending reviews",
+      pending: true,
+      detail: "Reviews awaiting staff approval.",
+    },
+    {
+      href: "/staff/users",
+      title: "Users",
+      icon: FiUsers,
+      description:
+        "Edit user accounts and manage agency and individual property access.",
+      count: counts?.users,
+      label: "registered accounts",
+      pending: false,
+      detail: "Student, staff, and external accounts.",
+    },
+  ];
   return (
     <>
       <SEO title="Staff Dashboard" noIndex />
@@ -67,149 +141,90 @@ export default function StaffHome() {
               <Text color="var(--site-muted)" mb={7}>
                 Choose a section to manage the housing hub.
               </Text>
-              <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>
-                <NextLink
-                  href="/staff/audit"
-                  style={{ textDecoration: "none" }}
-                >
-                  <Box
-                    position="relative"
-                    bg="var(--site-surface)"
-                    p={7}
-                    borderWidth="1px"
-                    borderColor="var(--site-border)"
-                    borderRadius="xl"
-                    _hover={{ borderColor: "var(--site-accent-fg)" }}
+              {countError && (
+                <Flex align="center" gap={3} mb={5}>
+                  <Text role="alert">Dashboard counts are unavailable.</Text>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRevision((value) => value + 1)}
                   >
-                    {audit && !auditError && (
-                      <Box
-                        position="absolute"
-                        top={4}
-                        right={4}
-                        bg={audit.issue_count ? "red.600" : "green.700"}
-                        color="white"
-                        borderRadius="full"
-                        minW="28px"
-                        px={2}
-                        py={1}
-                        textAlign="center"
-                        fontSize="sm"
-                        fontWeight="bold"
-                        aria-label={`${audit.issue_count} setup issues`}
-                      >
-                        {audit.issue_count}
-                      </Box>
-                    )}
-                    <FiAlertCircle size={28} />
-                    <Heading as="h2" size="lg" mt={4} mb={2}>
-                      Setup audit →
-                    </Heading>
-                    <Text>
-                      Find missing details, photos, floor plans, and pricing
-                      across apartments and rental agencies.
-                    </Text>
-                    <Text
-                      mt={3}
-                      fontSize="sm"
-                      color="var(--site-muted)"
-                      role="status"
+                    Retry counts
+                  </Button>
+                </Flex>
+              )}
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={5} autoRows="1fr">
+                {cards.map((card) => (
+                  <NextLink
+                    key={card.href}
+                    href={card.href}
+                    style={{ textDecoration: "none", display: "flex" }}
+                  >
+                    <Box
+                      w="100%"
+                      h="100%"
+                      bg="var(--site-surface)"
+                      p={7}
+                      borderWidth="1px"
+                      borderColor="var(--site-border)"
+                      borderRadius="xl"
+                      display="flex"
+                      flexDirection="column"
+                      _hover={{ borderColor: "var(--site-accent-fg)" }}
                     >
-                      {auditError
-                        ? "Issue count unavailable. Open the audit to retry."
-                        : audit
-                          ? `${audit.property_count} properties and ${audit.agency_count} agencies need attention.`
-                          : "Checking setup…"}
-                    </Text>
-                  </Box>
-                </NextLink>
-                <NextLink
-                  href="/staff/apartments"
-                  style={{ textDecoration: "none" }}
-                >
-                  <Box
-                    bg="var(--site-surface)"
-                    p={7}
-                    borderWidth="1px"
-                    borderColor="var(--site-border)"
-                    borderRadius="xl"
-                    _hover={{ borderColor: "var(--site-accent-fg)" }}
-                  >
-                    <FiHome size={28} />
-                    <Heading as="h2" size="lg" mt={4} mb={2}>
-                      Apartments →
-                    </Heading>
-                    <Text>
-                      Review suggested properties and rental agencies, including
-                      which company manages each property.
-                    </Text>
-                  </Box>
-                </NextLink>
-                <NextLink
-                  href="/staff/agencies"
-                  style={{ textDecoration: "none" }}
-                >
-                  <Box
-                    bg="var(--site-surface)"
-                    p={7}
-                    borderWidth="1px"
-                    borderColor="var(--site-border)"
-                    borderRadius="xl"
-                    _hover={{ borderColor: "var(--site-accent-fg)" }}
-                  >
-                    <FiBriefcase size={28} />
-                    <Heading as="h2" size="lg" mt={4} mb={2}>
-                      Agencies →
-                    </Heading>
-                    <Text>
-                      Update rental agency names, websites, phone numbers, email
-                      addresses, and descriptions.
-                    </Text>
-                  </Box>
-                </NextLink>
-                <NextLink
-                  href="/staff/reviews"
-                  style={{ textDecoration: "none" }}
-                >
-                  <Box
-                    bg="var(--site-surface)"
-                    p={7}
-                    borderWidth="1px"
-                    borderColor="var(--site-border)"
-                    borderRadius="xl"
-                    _hover={{ borderColor: "var(--site-accent-fg)" }}
-                  >
-                    <FiClipboard size={28} />
-                    <Heading as="h2" size="lg" mt={4} mb={2}>
-                      Reviews →
-                    </Heading>
-                    <Text>
-                      Read submitted apartment reviews. Approve reviews for
-                      publication or reject them.
-                    </Text>
-                  </Box>
-                </NextLink>
-                <NextLink
-                  href="/staff/users"
-                  style={{ textDecoration: "none" }}
-                >
-                  <Box
-                    bg="var(--site-surface)"
-                    p={7}
-                    borderWidth="1px"
-                    borderColor="var(--site-border)"
-                    borderRadius="xl"
-                    _hover={{ borderColor: "var(--site-accent-fg)" }}
-                  >
-                    <FiUsers size={28} />
-                    <Heading as="h2" size="lg" mt={4} mb={2}>
-                      Users →
-                    </Heading>
-                    <Text>
-                      View registered accounts, signup dates, roles, and account
-                      status.
-                    </Text>
-                  </Box>
-                </NextLink>
+                      <Flex
+                        align="center"
+                        justify="space-between"
+                        minH="32px"
+                        gap={3}
+                      >
+                        <card.icon size={28} />
+                        {card.count !== undefined && !countError && (
+                          <Box
+                            bg={
+                              card.pending && card.count > 0
+                                ? "red.600"
+                                : "var(--site-muted-surface)"
+                            }
+                            color={
+                              card.pending && card.count > 0
+                                ? "white"
+                                : "var(--site-fg)"
+                            }
+                            borderRadius="full"
+                            minW="32px"
+                            h="32px"
+                            px={2}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            fontSize="sm"
+                            fontWeight="bold"
+                            aria-label={`${card.count} ${card.label}`}
+                          >
+                            {card.count}
+                          </Box>
+                        )}
+                      </Flex>
+                      <Heading as="h2" size="lg" mt={4} mb={2}>
+                        {card.title} →
+                      </Heading>
+                      <Text mb={4}>{card.description}</Text>
+                      <Text
+                        mt="auto"
+                        fontSize="sm"
+                        color="var(--site-muted)"
+                        role="status"
+                      >
+                        {countError
+                          ? "Count unavailable"
+                          : card.count === undefined
+                            ? "Checking counts…"
+                            : `${card.count} ${card.label}. ${card.detail}`}
+                      </Text>
+                    </Box>
+                  </NextLink>
+                ))}
               </SimpleGrid>
             </>
           )}

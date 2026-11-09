@@ -6,9 +6,11 @@ import type { ReactNode } from "react";
 export function LegalLayout({
   title,
   children,
+  lastUpdated = "October 10, 2026",
 }: {
   title: string;
   children: ReactNode;
+  lastUpdated?: string;
 }) {
   return (
     <>
@@ -35,7 +37,7 @@ export function LegalLayout({
             {title}
           </Heading>
           <Text color="var(--site-muted)" mt={3}>
-            Last updated: October 10, 2026
+            Last updated: {lastUpdated}
           </Text>
           <Flex
             as="nav"

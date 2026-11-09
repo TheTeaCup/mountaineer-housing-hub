@@ -1,4 +1,8 @@
 import SEO from "@/components/seo";
+import UserEditor, {
+  AgencyAccessEditor,
+  type ManagedUser,
+} from "@/components/staff/user-editor";
 import { useAccount } from "@/components/ui/account-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
@@ -16,7 +20,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
-interface UserDetail {
+interface UserDetail extends ManagedUser {
   id: number;
   username: string | null;
   email: string;
@@ -36,6 +40,8 @@ interface UserAccessResult {
   user: UserDetail;
   assignedProperties: EditableProperty[];
   properties: EditableProperty[];
+  assignedAgencies: { id: number; name: string }[];
+  agencies: { id: number; name: string }[];
 }
 
 export default function StaffUserDetailPage() {
@@ -116,7 +122,7 @@ export default function StaffUserDetailPage() {
         <Container maxW="850px" py={10}>
           <NextLink href="/staff/users">← Registered users</NextLink>
           <Heading as="h1" mt={4} mb={5}>
-            User property access
+            Edit user and access
           </Heading>
           {profileError || error ? (
             <Text role="alert" color="fg.error">
@@ -130,6 +136,17 @@ export default function StaffUserDetailPage() {
             <Text role="status">Loading user…</Text>
           ) : (
             <Stack gap={6}>
+              <UserEditor
+                key={`${result.user.id}-${revision}`}
+                user={result.user}
+                onChange={() => setRevision((value) => value + 1)}
+              />
+              <AgencyAccessEditor
+                user={result.user}
+                agencies={result.agencies}
+                assignedAgencies={result.assignedAgencies}
+                onChange={() => setRevision((value) => value + 1)}
+              />
               <Box
                 borderWidth="1px"
                 borderColor="var(--site-border)"

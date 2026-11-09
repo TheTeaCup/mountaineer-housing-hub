@@ -7,7 +7,7 @@ import { Text } from "@chakra-ui/react";
 
 export default function PrivacyPolicy() {
   return (
-    <LegalLayout title="Privacy Policy">
+    <LegalLayout title="Privacy Policy" lastUpdated="November 9, 2026">
       <LegalSection title="1. About this policy">
         <Text>
           Mountaineer Housing Hub is a student housing information project
@@ -29,6 +29,14 @@ export default function PrivacyPolicy() {
           reviews. We do not save Google profile photos for new accounts or send
           account data to an avatar service. Photos stored before this change
           may remain until removed or the account is deleted.
+        </Text>
+        <Text mb={3}>
+          For agency and external accounts created by staff, we store the
+          account name, email address, a hash of the chosen password, setup link
+          hashes and expiration times, activation time, and agency or property
+          access assignments. We do not store passwords in plain text. We also
+          record the policy versions and the time you explicitly agree to the
+          submission terms and acknowledge this policy.
         </Text>
         <Text mb={3}>
           The server processes IP addresses, browser or device information,
