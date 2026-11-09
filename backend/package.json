@@ -6,6 +6,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "test": "node --import tsx --test tests/*.test.mjs",
+    "db:legal": "node src/scripts/migrateLegal.mjs",
     "db:accounts": "node src/scripts/setupAccounts.mjs",
     "staff:grant": "node src/scripts/grantStaff.mjs",
     "dev": "tsx watch src/index.ts",

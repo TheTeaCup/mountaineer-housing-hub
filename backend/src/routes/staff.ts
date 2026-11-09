@@ -14,6 +14,7 @@ import { validatePublication } from "./publication.js";
 import { validateHousingSubmission } from "./housing-submission.js";
 import { attachReviewPhotos } from "./review-photos.js";
 import { propertyPhotos } from "./property-photos.js";
+import { loadSetupAudit } from "./setup-audit.js";
 
 const MAX_PROPERTY_PHOTOS = 10;
 
@@ -138,6 +139,10 @@ export function createStaffRouter(deps: AccountDependencies) {
     res
       .status(403)
       .json({ message: "Staff or assigned property access required." });
+  });
+  router.get("/audit", async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await loadSetupAudit(deps));
   });
   router.get("/users", async (req, res) => {
     const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
@@ -519,6 +524,81 @@ export function createStaffRouter(deps: AccountDependencies) {
       [propertyId],
     );
     res.status(201).json({
+      floor_plans: floorPlans.map((item) => ({
+        ...item,
+        bathrooms: Number(item.bathrooms),
+        rent_min: item.rent_min === null ? null : Number(item.rent_min),
+        rent_max: item.rent_max === null ? null : Number(item.rent_max),
+      })),
+    });
+  });
+  router.put("/properties/:id/floor-plans/:floorPlanId", async (req, res) => {
+    const propertyId = Number(req.params.id);
+    const floorPlanId = Number(req.params.floorPlanId);
+    if (
+      !Number.isInteger(propertyId) ||
+      propertyId < 1 ||
+      !Number.isInteger(floorPlanId) ||
+      floorPlanId < 1
+    ) {
+      res
+        .status(400)
+        .json({ message: "Choose a valid property and floor plan." });
+      return;
+    }
+    let plan;
+    try {
+      plan = floorPlanInput(req.body ?? {});
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
+    }
+    try {
+      const result = await deps.execute(
+        "UPDATE floor_plans SET name = ?, bedrooms = ?, bathrooms = ?, square_feet = ?, rent_min = ?, rent_max = ?, rent_basis = ?, description = ? WHERE id = ? AND property_id = ?",
+        [
+          plan.name,
+          plan.bedrooms,
+          plan.bathrooms,
+          plan.squareFeet,
+          plan.rentMin,
+          plan.rentMax,
+          plan.rentBasis,
+          plan.description,
+          floorPlanId,
+          propertyId,
+        ],
+      );
+      if (!result.affectedRows) {
+        // Some database clients report zero for an unchanged row.
+        const existing = await deps.query<{ id: number }>(
+          "SELECT id FROM floor_plans WHERE id = ? AND property_id = ?",
+          [floorPlanId, propertyId],
+        );
+        if (!existing[0]) {
+          res.status(404).json({ message: "Floor plan not found." });
+          return;
+        }
+      }
+    } catch (error) {
+      if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+        res.status(409).json({
+          message:
+            "A floor plan with this name already exists for the property.",
+        });
+        return;
+      }
+      throw error;
+    }
+    await deps.execute(
+      "UPDATE properties SET updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
+      [propertyId],
+    );
+    const floorPlans = await deps.query<StaffFloorPlanRow>(
+      "SELECT id, name, bedrooms, bathrooms, square_feet, rent_min, rent_max, rent_basis, description FROM floor_plans WHERE property_id = ? ORDER BY bedrooms, name",
+      [propertyId],
+    );
+    res.json({
       floor_plans: floorPlans.map((item) => ({
         ...item,
         bathrooms: Number(item.bathrooms),

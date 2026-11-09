@@ -6,10 +6,10 @@ const db = await mysql.createConnection({ host: process.env.MYSQL_HOST, port: Nu
 try {
   const [columns] = await db.execute("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'role'");
   if (!columns.length) await db.query("ALTER TABLE users ADD COLUMN role ENUM ('user','staff') NOT NULL DEFAULT 'user'");
-  for (const table of ["favorites", "apartment_submissions"]) {
+  for (const table of ["favorites", "apartment_submissions", "user_legal_acceptances"]) {
     const [tables] = await db.execute("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?", [table]);
     if (!tables.length) {
-      const file = table === "favorites" ? "favorites.sql" : "submissions.sql";
+      const file = table === "favorites" ? "favorites.sql" : table === "user_legal_acceptances" ? "user_legal_acceptances.sql" : "submissions.sql";
       await db.query(await readFile(new URL(`../db/schemas/${file}`, import.meta.url), "utf8"));
     }
   }

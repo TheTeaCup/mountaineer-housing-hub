@@ -8,6 +8,12 @@ import {
 import { deleteImages, uploadImage } from "../storage/images.js";
 import { validateHousingSubmission } from "./housing-submission.js";
 import { attachReviewPhotos } from "./review-photos.js";
+import {
+  TERMS_VERSION,
+  PRIVACY_VERSION,
+  validateSubmissionTerms,
+  recordSubmissionTerms,
+} from "./submission-terms.js";
 
 const MAX_REVIEW_PHOTOS = 5;
 
@@ -90,6 +96,13 @@ export function createAccountRouter(deps: AccountDependencies) {
       [avatar_variant, avatar_palette, res.locals.userId],
     );
     res.json({ updated: true });
+  });
+  router.get("/submission-terms", async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      terms_version: TERMS_VERSION,
+      privacy_version: PRIVACY_VERSION,
+    });
   });
   router.post("/username/regenerate", async (_req, res) => {
     if (!deps.generateUsername) {
@@ -197,6 +210,12 @@ export function createAccountRouter(deps: AccountDependencies) {
     "/reviews",
     imageUpload("photos", MAX_REVIEW_PHOTOS),
     async (req, res) => {
+      try {
+        validateSubmissionTerms(req.body ?? {});
+      } catch (error) {
+        res.status(400).json({ message: (error as Error).message });
+        return;
+      }
       const { slug, rating, body, pros, cons, recommendation } = req.body ?? {};
       const numericRating = Number(rating);
       const normalizedRecommendation = recommendation || null;
@@ -240,6 +259,7 @@ export function createAccountRouter(deps: AccountDependencies) {
       let reviewId: number | undefined;
       const uploadedKeys: string[] = [];
       try {
+        await recordSubmissionTerms(deps, res.locals.userId);
         const result = await deps.execute(
           "INSERT INTO reviews (property_id, user_id, rating, body, pros, cons, recommendation) VALUES (?, ?, ?, ?, ?, ?, ?)",
           [
@@ -285,6 +305,7 @@ export function createAccountRouter(deps: AccountDependencies) {
   router.post("/apartments", async (req, res) => {
     let submission;
     try {
+      validateSubmissionTerms(req.body ?? {});
       submission = validateHousingSubmission(req.body ?? {});
     } catch (error) {
       res.status(400).json({ message: (error as Error).message });
@@ -302,6 +323,7 @@ export function createAccountRouter(deps: AccountDependencies) {
         return;
       }
     }
+    await recordSubmissionTerms(deps, res.locals.userId);
     await deps.execute(
       "INSERT INTO apartment_submissions (user_id, submission_kind, name, address, website, information, property_type, agency_id, proposed_agency_name, proposed_agency_website) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [

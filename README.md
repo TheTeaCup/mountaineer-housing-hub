@@ -1,5 +1,19 @@
 # Mountaineer Housing Hub
 
+Staff can edit existing layouts from each property's Floor plans tab. The staff
+dashboard's Setup audit card counts individual missing setup details across draft
+and published properties and agencies. `/staff/audit` lists each fix and links to
+its editor; archived properties are excluded.
+
+Both `/submit` forms require an explicit agreement to the Terms of Use and
+acknowledgment of the Privacy Policy. The backend verifies the current versions
+and stores the authenticated account's first acceptance time for each policy
+version pair. Before deploying these changes to an existing database, run
+`npm run db:legal` from `backend` (migration 007). New database setups include the
+table automatically. Update the version constants in
+`backend/src/routes/submission-terms.ts` whenever either published policy changes.
+Run `npm test` from `backend` for the floor plan, audit, and consent checks.
+
 The home page requests six random published properties on each load and selects
 a random photo for each card. Other property lists keep their usual ordering.
 

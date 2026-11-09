@@ -72,6 +72,7 @@ const backendDirectory = path.resolve(
 
 const schemaFiles = [
   "users.sql",
+  "user_legal_acceptances.sql",
   "auth.sql",
   "agencies.sql",
   "properties.sql",
