@@ -15,6 +15,8 @@ import { validateHousingSubmission } from "./housing-submission.js";
 import { attachReviewPhotos } from "./review-photos.js";
 import { propertyPhotos } from "./property-photos.js";
 import { loadSetupAudit } from "./setup-audit.js";
+import { canEditProperty } from "./property-access.js";
+import { externalAccountInput, issueSetupLink } from "./external-accounts.js";
 
 const MAX_PROPERTY_PHOTOS = 10;
 
@@ -121,17 +123,14 @@ export function createStaffRouter(deps: AccountDependencies) {
       [userId],
     );
     res.locals.userId = userId;
+    res.locals.isStaff = users[0]?.role === "staff";
     if (users[0]?.role === "staff") {
       next();
       return;
     }
     const propertyMatch = req.path.match(/^\/properties\/(\d+)(?:\/|$)/);
     if (propertyMatch) {
-      const assignments = await deps.query<{ user_id: number }>(
-        "SELECT user_id FROM property_editors WHERE user_id = ? AND property_id = ?",
-        [userId, propertyMatch[1]],
-      );
-      if (assignments[0]) {
+      if (await canEditProperty(deps, userId, propertyMatch[1])) {
         next();
         return;
       }
@@ -143,6 +142,32 @@ export function createStaffRouter(deps: AccountDependencies) {
   router.get("/audit", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.json(await loadSetupAudit(deps));
+  });
+  router.get("/dashboard", async (_req, res) => {
+    const [audit, counts] = await Promise.all([
+      loadSetupAudit(deps),
+      deps.query<{
+        pending_submissions: number;
+        pending_reviews: number;
+        agencies: number;
+        users: number;
+      }>(
+        "SELECT (SELECT COUNT(*) FROM apartment_submissions WHERE status = 'pending') AS pending_submissions, (SELECT COUNT(*) FROM reviews WHERE status = 'pending') AS pending_reviews, (SELECT COUNT(*) FROM agencies) AS agencies, (SELECT COUNT(*) FROM users) AS users",
+      ),
+    ]);
+    const count = counts[0];
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      audit: {
+        issue_count: audit.issue_count,
+        property_count: audit.property_count,
+        agency_count: audit.agency_count,
+      },
+      pending_submissions: Number(count?.pending_submissions ?? 0),
+      pending_reviews: Number(count?.pending_reviews ?? 0),
+      agencies: Number(count?.agencies ?? 0),
+      users: Number(count?.users ?? 0),
+    });
   });
   router.get("/users", async (req, res) => {
     const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
@@ -156,25 +181,230 @@ export function createStaffRouter(deps: AccountDependencies) {
     );
     res.json({ users: rows, total: count[0]?.total ?? 0 });
   });
+  router.post("/users/external", async (req, res) => {
+    let input;
+    try {
+      input = externalAccountInput(req.body ?? {});
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
+    }
+    try {
+      const result = await deps.transaction(async (db) => {
+        const user = await db.execute(
+          "INSERT INTO users (auth_name, email) VALUES (?, ?)",
+          [input.name, input.email],
+        );
+        if (!user.insertId) throw new Error("Account could not be created.");
+        await db.execute(
+          "INSERT INTO external_accounts (user_id, created_by) VALUES (?, ?)",
+          [user.insertId, res.locals.userId],
+        );
+        const setup_url = await issueSetupLink(
+          db,
+          user.insertId,
+          deps.frontendOrigin,
+        );
+        return { id: user.insertId, setup_url };
+      });
+      await deps.ensureProfile(String(result.id));
+      res.setHeader("Cache-Control", "no-store");
+      res.status(201).json(result);
+    } catch (error) {
+      if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+        res
+          .status(409)
+          .json({
+            message:
+              "An account already exists with this email. Open that user to manage access.",
+          });
+        return;
+      }
+      throw error;
+    }
+  });
+  router.patch("/users/:id", async (req, res) => {
+    const { name, username, role, status } = req.body ?? {};
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      name.trim().length > 255 ||
+      typeof username !== "string" ||
+      !username.trim() ||
+      username.trim().length > 100 ||
+      !["user", "staff"].includes(role) ||
+      !["active", "suspended"].includes(status)
+    ) {
+      res
+        .status(400)
+        .json({
+          message:
+            "Enter a username and choose a valid role and account status.",
+        });
+      return;
+    }
+    if (
+      String(req.params.id) === String(res.locals.userId) &&
+      (role !== "staff" || status !== "active")
+    ) {
+      res
+        .status(400)
+        .json({
+          message:
+            "You cannot suspend or remove staff access from your own account.",
+        });
+      return;
+    }
+    const existingUsers = await deps.query(
+      "SELECT id FROM users WHERE id = ?",
+      [req.params.id],
+    );
+    if (!existingUsers.length) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+    await deps.ensureProfile(String(req.params.id));
+    try {
+      const result = await deps.transaction(async (db) => {
+        const staff = await db.query<{ id: number }>(
+          "SELECT id FROM users WHERE role = 'staff' AND status = 'active' FOR UPDATE",
+        );
+        const users = await db.query<{
+          id: number;
+          role: string;
+          status: string;
+        }>("SELECT id, role, status FROM users WHERE id = ? FOR UPDATE", [
+          req.params.id,
+        ]);
+        if (!users[0]) return { status: 404, message: "User not found." };
+        const external = await db.query(
+          "SELECT user_id FROM external_accounts WHERE user_id = ?",
+          [req.params.id],
+        );
+        if (external.length && role === "staff")
+          return {
+            status: 400,
+            message:
+              "Agency and external accounts use scoped access. Staff access requires an App State account.",
+          };
+        if (
+          users[0].role === "staff" &&
+          users[0].status === "active" &&
+          (role !== "staff" || status !== "active") &&
+          staff.length <= 1
+        )
+          return {
+            status: 400,
+            message: "Keep at least one active staff account.",
+          };
+        await db.execute(
+          "UPDATE users SET auth_name = ?, role = ?, status = ? WHERE id = ?",
+          [name.trim(), role, status, req.params.id],
+        );
+        await db.execute(
+          "UPDATE user_profiles SET username = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE user_id = ?",
+          [username.trim(), req.params.id],
+        );
+        if (status !== "active" || role !== users[0].role)
+          await db.execute("DELETE FROM auth_sessions WHERE userId = ?", [
+            req.params.id,
+          ]);
+        return { status: 200, message: "User updated." };
+      });
+      res.status(result.status).json({ message: result.message });
+    } catch (error) {
+      if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+        res
+          .status(409)
+          .json({ message: "That public username is already taken." });
+        return;
+      }
+      throw error;
+    }
+  });
+  router.post("/users/:id/setup-link", async (req, res) => {
+    const users = await deps.query<{ user_id: number }>(
+      "SELECT ea.user_id FROM external_accounts ea JOIN users u ON u.id = ea.user_id WHERE ea.user_id = ? AND u.status = 'active'",
+      [req.params.id],
+    );
+    if (!users[0]) {
+      res
+        .status(400)
+        .json({
+          message:
+            "Setup links are only available for active external accounts.",
+        });
+      return;
+    }
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      setup_url: await issueSetupLink(
+        deps,
+        users[0].user_id,
+        deps.frontendOrigin,
+      ),
+    });
+  });
+  router.put("/users/:id/agencies/:agencyId", async (req, res) => {
+    const users = await deps.query(
+      "SELECT id FROM users WHERE id = ? AND status = 'active' AND role <> 'staff'",
+      [req.params.id],
+    );
+    const agencies = await deps.query("SELECT id FROM agencies WHERE id = ?", [
+      req.params.agencyId,
+    ]);
+    if (!users.length || !agencies.length) {
+      res
+        .status(400)
+        .json({
+          message: "Choose an active non-staff user and an existing agency.",
+        });
+      return;
+    }
+    await deps.execute(
+      "INSERT INTO agency_editors (user_id, agency_id, assigned_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by)",
+      [req.params.id, req.params.agencyId, res.locals.userId],
+    );
+    res.json({ assigned: true });
+  });
+  router.delete("/users/:id/agencies/:agencyId", async (req, res) => {
+    await deps.execute(
+      "DELETE FROM agency_editors WHERE user_id = ? AND agency_id = ?",
+      [req.params.id, req.params.agencyId],
+    );
+    res.json({ assigned: false });
+  });
   router.get("/users/:id", async (req, res) => {
     const users = await deps.query(
-      "SELECT u.id, u.email, u.role, u.status, u.created_at, u.last_login, p.username FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ?",
+      "SELECT u.id, u.auth_name AS name, u.email, u.role, u.status, u.created_at, u.last_login, p.username, CASE WHEN ea.user_id IS NULL THEN 'student' ELSE 'external' END AS account_kind, ea.activated_at FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id LEFT JOIN external_accounts ea ON ea.user_id = u.id WHERE u.id = ?",
       [req.params.id],
     );
     if (!users[0]) {
       res.status(404).json({ message: "User not found." });
       return;
     }
-    const [assignedProperties, properties] = await Promise.all([
-      deps.query(
-        "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
-        [req.params.id],
-      ),
-      deps.query(
-        "SELECT id, name, slug, status FROM properties ORDER BY name LIMIT 500",
-      ),
-    ]);
-    res.json({ user: users[0], assignedProperties, properties });
+    const [assignedProperties, properties, assignedAgencies, agencies] =
+      await Promise.all([
+        deps.query(
+          "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
+          [req.params.id],
+        ),
+        deps.query(
+          "SELECT id, name, slug, status FROM properties ORDER BY name LIMIT 500",
+        ),
+        deps.query(
+          "SELECT a.id, a.name FROM agency_editors ae JOIN agencies a ON a.id = ae.agency_id WHERE ae.user_id = ? ORDER BY a.name",
+          [req.params.id],
+        ),
+        deps.query("SELECT id, name FROM agencies ORDER BY name"),
+      ]);
+    res.json({
+      user: users[0],
+      assignedProperties,
+      properties,
+      assignedAgencies,
+      agencies,
+    });
   });
   router.put("/users/:id/properties/:propertyId", async (req, res) => {
     const users = await deps.query<{
@@ -723,6 +953,25 @@ export function createStaffRouter(deps: AccountDependencies) {
     res.json({ deleted: true });
   });
   router.patch("/properties/:id", async (req, res) => {
+    if (!res.locals.isStaff) {
+      const rows = await deps.query<{ agency_id: number | null }>(
+        "SELECT agency_id FROM properties WHERE id = ?",
+        [req.params.id],
+      );
+      if (
+        !rows[0] ||
+        (req.body?.agency_id == null || req.body.agency_id === ""
+          ? null
+          : Number(req.body.agency_id)) !== rows[0].agency_id
+      ) {
+        res
+          .status(403)
+          .json({
+            message: "Only staff can change the agency assigned to a property.",
+          });
+        return;
+      }
+    }
     let property;
     let slug: string;
     try {

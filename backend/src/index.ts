@@ -4,7 +4,7 @@ import bodyParser from "body-parser";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 
 import indexRouter from "./routes/index.js";
-import { auth } from "./auth/index.js";
+import { auth, isExternalAccount } from "./auth/index.js";
 import { config } from "./config.js";
 import redis from "./db/redis.js";
 import { createAccountRouter } from "./routes/account.js";
@@ -19,6 +19,7 @@ import { verifiedProxyClientIp } from "./utils/proxyClientIp.js";
 import { db } from "./db/connections.js";
 import { createReviewPhotoRouter } from "./routes/review-photos.js";
 import { createPropertyPhotoRouter } from "./routes/property-photos.js";
+import { createExternalSetupRouter } from "./routes/external-accounts.js";
 
 async function startServer() {
   const app = express();
@@ -114,7 +115,12 @@ async function startServer() {
           headers as Parameters<typeof fromNodeHeaders>[0],
         ),
       });
-      if (!session || !isVerifiedAppStateUser(session.user)) return undefined;
+      if (
+        !session ||
+        (!isVerifiedAppStateUser(session.user) &&
+          !(await isExternalAccount(session.user.id)))
+      )
+        return undefined;
       const users = await query<{ status: string }>(
         "SELECT status FROM users WHERE id = ?",
         [session.user.id],
@@ -131,6 +137,7 @@ async function startServer() {
   app.use("/review-photos", createReviewPhotoRouter(accountDependencies));
   app.use("/account", createAccountRouter(accountDependencies));
   app.use("/staff", createStaffRouter(accountDependencies));
+  app.use("/external-account", createExternalSetupRouter(accountDependencies));
 
   // REST
   app.use("/", indexRouter);

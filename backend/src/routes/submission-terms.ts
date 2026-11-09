@@ -1,8 +1,8 @@
 import type { CatalogDatabase } from "./account.js";
 
 // Bump these versions whenever the corresponding published policy changes.
-export const TERMS_VERSION = "2026-10-10";
-export const PRIVACY_VERSION = "2026-10-10";
+export const TERMS_VERSION = "2026-11-09";
+export const PRIVACY_VERSION = "2026-11-09";
 
 export function validateSubmissionTerms(body: Record<string, unknown>) {
   if (

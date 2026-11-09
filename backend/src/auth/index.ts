@@ -2,10 +2,19 @@ import { betterAuth } from "better-auth";
 import { bearer } from "better-auth/plugins";
 import { oneTimeToken } from "better-auth/plugins/one-time-token";
 import { db } from "../db/connections.js";
-import { authPolicy } from "./policy.js";
+import { createAuthPolicy } from "./policy.js";
 import { config } from "../config.js";
 import { query } from "../db/query.js";
 import { ensureAuthProfile } from "./ensureProfile.js";
+
+export async function isExternalAccount(userId: string) {
+  const rows = await query(
+    "SELECT user_id FROM external_accounts WHERE user_id = ? AND activated_at IS NOT NULL",
+    [userId],
+  );
+  return rows.length > 0;
+}
+const authPolicy = createAuthPolicy(isExternalAccount);
 
 export const auth = betterAuth({
   appName: "Mountaineer Housing Hub",

@@ -8,6 +8,7 @@
   "scripts": {
     "test": "node --import tsx --test tests/*.test.mjs",
     "db:legal": "node src/scripts/migrateLegal.mjs",
+    "db:agency-access": "node src/scripts/migrateAgencyAccess.mjs",
     "db:accounts": "node src/scripts/setupAccounts.mjs",
     "staff:grant": "node src/scripts/grantStaff.mjs",
     "dev": "tsx watch src/index.ts",

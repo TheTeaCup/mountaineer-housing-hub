@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { readImage } from "../storage/images.js";
 import type { AccountDependencies, CatalogDatabase } from "./account.js";
+import { canEditProperty } from "./property-access.js";
 
 interface PropertyPhotoRow {
   id: number;
@@ -51,8 +52,9 @@ export function createPropertyPhotoRouter(deps: AccountDependencies) {
     const rows = await deps.query<{
       image_url: string;
       status: string;
+      property_id: number;
     }>(
-      "SELECT pp.image_url, p.status FROM property_photos pp JOIN properties p ON p.id = pp.property_id WHERE pp.id = ?",
+      "SELECT pp.image_url, pp.property_id, p.status FROM property_photos pp JOIN properties p ON p.id = pp.property_id WHERE pp.id = ?",
       [photoId],
     );
     const photo = rows[0];
@@ -71,7 +73,10 @@ export function createPropertyPhotoRouter(deps: AccountDependencies) {
         "SELECT role FROM users WHERE id = ?",
         [userId],
       );
-      if (users[0]?.role !== "staff") {
+      if (
+        users[0]?.role !== "staff" &&
+        !(await canEditProperty(deps, userId, photo.property_id))
+      ) {
         res.status(404).end();
         return;
       }

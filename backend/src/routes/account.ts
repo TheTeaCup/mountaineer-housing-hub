@@ -163,10 +163,37 @@ export function createAccountRouter(deps: AccountDependencies) {
   router.get("/managed-properties", async (_req, res) => {
     res.json(
       await deps.query(
-        "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
-        [res.locals.userId],
+        "SELECT p.id, p.name, p.slug, p.status FROM properties p WHERE EXISTS (SELECT 1 FROM property_editors pe WHERE pe.property_id = p.id AND pe.user_id = ?) OR EXISTS (SELECT 1 FROM agency_editors ae WHERE ae.agency_id = p.agency_id AND ae.user_id = ?) ORDER BY p.name, p.id",
+        [res.locals.userId, res.locals.userId],
       ),
     );
+  });
+  router.get("/submissions", async (req, res) => {
+    const page = Math.max(
+      1,
+      Math.min(100000, Math.floor(Number(req.query.page) || 1)),
+    );
+    const limit = Math.max(
+      1,
+      Math.min(25, Math.floor(Number(req.query.limit) || 10)),
+    );
+    const [submissions, counts] = await Promise.all([
+      deps.query(
+        "SELECT id, name, address, submission_kind, status, created_at FROM apartment_submissions WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+        [res.locals.userId, limit, (page - 1) * limit],
+      ),
+      deps.query<{ total: number }>(
+        "SELECT COUNT(*) AS total FROM apartment_submissions WHERE user_id = ?",
+        [res.locals.userId],
+      ),
+    ]);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      submissions,
+      total: Number(counts[0]?.total ?? 0),
+      page,
+      limit,
+    });
   });
   router.get("/agencies", async (_req, res) => {
     res.json(
