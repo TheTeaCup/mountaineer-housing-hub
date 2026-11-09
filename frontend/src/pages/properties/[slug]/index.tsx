@@ -1,5 +1,5 @@
 import FavoriteButton from "@/components/properties/favorite-button";
-import PropertyPhoto from "@/components/properties/photo";
+import PropertyPhotoGallery from "@/components/properties/photo-gallery";
 import PropertyReviews from "@/components/properties/reviews";
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
@@ -21,7 +21,6 @@ import {
   Container,
   Grid,
   Heading,
-  SimpleGrid,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -120,27 +119,11 @@ export default function PropertyPage({ property, error }: PropertyPageProps) {
               <Text mb={5}>{property.address}</Text>
               <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={7}>
                 <Stack gap={7}>
-                  <PropertyPhoto
-                    key={property.photos[0]?.image_url || property.slug}
-                    src={property.photos[0]?.image_url}
-                    alt={
-                      property.photos[0]?.alt_text ||
-                      `${property.name} exterior`
-                    }
-                    height="340px"
+                  <PropertyPhotoGallery
+                    key={property.slug}
+                    photos={property.photos}
+                    name={property.name}
                   />
-                  {property.photos.length > 1 && (
-                    <SimpleGrid columns={{ base: 2, md: 3 }} gap={3}>
-                      {property.photos.slice(1).map((photo) => (
-                        <PropertyPhoto
-                          key={photo.image_url}
-                          src={photo.image_url}
-                          alt={photo.alt_text || property.name}
-                          height="150px"
-                        />
-                      ))}
-                    </SimpleGrid>
-                  )}
                   <Box>
                     <Heading as="h2" size="lg" mb={3}>
                       About this property

@@ -6,10 +6,12 @@ export default function PropertyPhoto({
   src,
   alt,
   height = "200px",
+  fit = "cover",
 }: {
   src?: string | null;
   alt: string;
   height?: string;
+  fit?: "cover" | "contain";
 }) {
   const [broken, setBroken] = useState(false);
   const url = safeUrl(src, true);
@@ -19,7 +21,7 @@ export default function PropertyPhoto({
       alt={alt}
       w="100%"
       h={height}
-      objectFit="cover"
+      objectFit={fit}
       onError={() => setBroken(true)}
     />
   ) : (

@@ -19,6 +19,7 @@ export default function MapComponent({
   propertyQuery?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const viewRef = useRef<{ center: [number, number]; zoom: number } | null>(
     null,
   );
@@ -27,8 +28,37 @@ export default function MapComponent({
   const { properties, loading, error, retry } = useProperties("", 500);
   const [mapError, setMapError] = useState("");
   const [keyOpen, setKeyOpen] = useState(true);
+  const [showComplexes, setShowComplexes] = useState(true);
+  const [showTownhomes, setShowTownhomes] = useState(true);
   const mapped = useMemo(() => mapLocations(properties), [properties]);
   const focused = mapped.find((property) => property.slug === propertyQuery);
+  const visible = mapped.filter((property) =>
+    property.property_type === "townhome"
+      ? showTownhomes
+      : property.property_type === "apartment_complex"
+        ? showComplexes
+        : true,
+  );
+  const propertyFilter = useMemo<maplibregl.FilterSpecification>(
+    () => [
+      "all",
+      [
+        "any",
+        ["!=", ["get", "propertyType"], "apartment_complex"],
+        showComplexes,
+      ],
+      ["any", ["!=", ["get", "propertyType"], "townhome"], showTownhomes],
+    ],
+    [showComplexes, showTownhomes],
+  );
+  const filterRef = useRef(propertyFilter);
+  useEffect(() => {
+    filterRef.current = propertyFilter;
+    const map = mapRef.current;
+    for (const layer of ["property-icons", "property-labels"]) {
+      if (map?.getLayer(layer)) map.setFilter(layer, propertyFilter);
+    }
+  }, [propertyFilter]);
   useEffect(() => {
     registerPMTiles();
     if (!containerRef.current) return;
@@ -59,6 +89,7 @@ export default function MapComponent({
         ),
       },
     });
+    mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.on("error", () => {
       if (!disposed)
@@ -103,6 +134,7 @@ export default function MapComponent({
           id: "property-icons",
           type: "symbol",
           source: "properties",
+          filter: filterRef.current,
           layout: {
             "icon-image": [
               "match",
@@ -120,6 +152,7 @@ export default function MapComponent({
           id: "property-labels",
           type: "symbol",
           source: "properties",
+          filter: filterRef.current,
           layout: {
             "text-field": ["get", "name"],
             "text-size": 13,
@@ -181,6 +214,7 @@ export default function MapComponent({
         };
       }
       map.remove();
+      if (mapRef.current === map) mapRef.current = null;
     };
   }, [router, colorMode, mapped, focused]);
   return (
@@ -225,7 +259,9 @@ export default function MapComponent({
             ) : (
               <Text role="status">
                 {mapped.length
-                  ? "Select a marker to view property details."
+                  ? visible.length
+                    ? "Select a marker to view property details."
+                    : "No properties match your filters. Turn on a property type below."
                   : "No published properties have map coordinates yet."}
               </Text>
             )}
@@ -247,7 +283,19 @@ export default function MapComponent({
                     border="2px solid #111111"
                     borderRadius="2px"
                   />
-                  <Text>Apartment community</Text>
+                  <Switch.Root
+                    size="sm"
+                    checked={showComplexes}
+                    onCheckedChange={({ checked }) => setShowComplexes(checked)}
+                    flex="1"
+                    justifyContent="space-between"
+                  >
+                    <Switch.HiddenInput />
+                    <Switch.Label>Apartment complexes</Switch.Label>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch.Root>
                 </Flex>
                 <Flex as="li" align="center" gap={2}>
                   <Box
@@ -257,9 +305,38 @@ export default function MapComponent({
                     border="2px solid #111111"
                     transform="rotate(45deg)"
                   />
-                  <Text>Townhome</Text>
+                  <Switch.Root
+                    size="sm"
+                    checked={showTownhomes}
+                    onCheckedChange={({ checked }) => setShowTownhomes(checked)}
+                    flex="1"
+                    justifyContent="space-between"
+                  >
+                    <Switch.HiddenInput />
+                    <Switch.Label>Townhomes</Switch.Label>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch.Root>
                 </Flex>
               </Flex>
+            )}
+            {!loading && !error && mapped.length > 0 && (
+              <Text
+                mt={3}
+                fontSize="xs"
+                color="var(--site-muted)"
+                role="status"
+                aria-live="polite"
+              >
+                {visible.length} of {mapped.length} properties shown
+                {mapped.some(
+                  (property) =>
+                    !["apartment_complex", "townhome"].includes(
+                      property.property_type,
+                    ),
+                ) && ". Other rental types remain visible."}
+              </Text>
             )}
             <Flex
               mt={3}
@@ -290,6 +367,12 @@ export default function MapComponent({
                 This property does not have a published map location.
               </Text>
             )}
+            {focused &&
+              !visible.some((property) => property.id === focused.id) && (
+                <Text mt={2} fontSize="sm">
+                  This property is hidden by your filters.
+                </Text>
+              )}
             {mapError && (
               <Text mt={2} fontSize="sm">
                 {mapError}
