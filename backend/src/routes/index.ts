@@ -8,7 +8,18 @@ import { attachReviewPhotos } from "./review-photos.js";
 import { createAgenciesRouter } from "./agencies.js";
 import { createSitemapRouter } from "./sitemap.js";
 
+import { execute } from "../db/execute.js";
+import { recordPropertyView } from "./property-analytics.js";
+
 const router = Router();
+router.post("/properties/:slug/views", async (req, res) => {
+  if (req.headers.origin !== new URL(config.FRONTEND_URL).origin) {
+    res.sendStatus(403);
+    return;
+  }
+  await recordPropertyView({ execute }, req.params.slug);
+  res.sendStatus(204);
+});
 router.get("/properties/:slug/reviews", async (req, res) => {
   const reviews = await query<{ id: number } & Record<string, unknown>>(
     "SELECT r.id, r.rating, r.body, r.updated_at, u.username, u.avatar_variant, u.avatar_palette, COALESCE(u.avatar_seed, CONCAT('mountaineer-', u.user_id)) AS avatar_seed FROM reviews r JOIN properties p ON p.id = r.property_id JOIN user_profiles u ON u.user_id = r.user_id WHERE p.slug = ? AND p.status = 'published' AND r.status = 'published' ORDER BY r.updated_at DESC LIMIT 100",

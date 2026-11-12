@@ -76,6 +76,7 @@ const schemaFiles = [
   "auth.sql",
   "agencies.sql",
   "properties.sql",
+  "property_daily_views.sql",
   "property_editors.sql",
   "agency_access.sql",
   "floor_plans.sql",

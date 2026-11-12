@@ -8,6 +8,7 @@ SOURCE src / db / schemas / auth.sql;
 SOURCE src / db / schemas / agencies.sql;
 
 SOURCE src / db / schemas / properties.sql;
+SOURCE src/db/schemas/property_daily_views.sql;
 
 SOURCE src / db / schemas / property_editors.sql;
 SOURCE src / db / schemas / agency_access.sql;

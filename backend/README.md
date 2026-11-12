@@ -405,3 +405,7 @@ The API derives review authors from the session, enforces edit ownership and
 moderator permissions, restricts publication fields, validates upload signatures
 and sizes, enforces the form's five-photo limit, and uses parameterized queries.
 The schema alone does not implement authorization or moderation workflows.
+
+## Listing analytics
+
+For an existing database, apply `src/db/migrations/009_property_daily_views.sql` before deploying the analytics routes. Fresh installs create the table during database setup. Counts begin when tracking is deployed.

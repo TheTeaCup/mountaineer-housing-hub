@@ -15,6 +15,8 @@ import {
   recordSubmissionTerms,
 } from "./submission-terms.js";
 
+import { getPropertyAnalytics } from "./property-analytics.js";
+
 const MAX_REVIEW_PHOTOS = 5;
 
 export interface CatalogDatabase {
@@ -160,6 +162,16 @@ export function createAccountRouter(deps: AccountDependencies) {
       ),
     );
   });
+  router.get("/analytics", async (req, res) => {
+    const days = req.query.days ?? "30";
+    if (days !== "7" && days !== "30" && days !== "90") {
+      res.status(400).json({ message: "Select a 7, 30, or 90 day range." });
+      return;
+    }
+    res.set("Cache-Control", "private, no-store");
+    res.json(await getPropertyAnalytics(deps, res.locals.userId, Number(days)));
+  });
+
   router.get("/managed-properties", async (_req, res) => {
     res.json(
       await deps.query(
