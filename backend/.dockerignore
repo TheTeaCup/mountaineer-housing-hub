@@ -1,0 +1,9 @@
+# Allow only build inputs. Secrets, logs, local modules and Git never enter context.
+**
+!Dockerfile
+!.dockerignore
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**

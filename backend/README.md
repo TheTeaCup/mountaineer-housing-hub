@@ -3,7 +3,12 @@
 The backend uses TypeScript, Express, MySQL (`mysql2`), and Better Auth.
 Redis and object storage are configured separately for the application.
 
-## Automatic backend updates
+## Production deployment
+
+See [Docker and Coolify deployment](DEPLOYMENT.md) for image builds, runtime
+configuration, and cutover.
+
+## Legacy watcher deployment
 
 The root `watcher.mjs` is adapted for Mountaineer Housing Hub. Run it from the
 project root on your server:

@@ -1,0 +1,82 @@
+name: Backend production image
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-production.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-production-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set image name
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "name=ghcr.io/${REPOSITORY,,}-backend" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Record release image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          printf '### Backend release\n\nImage: `%s:latest`\n\nImmutable reference: `%s@%s`\n' \
+            "$IMAGE" "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+      - name: Request Coolify deployment
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          if [[ -z "$DEPLOY_WEBHOOK" && -z "$COOLIFY_TOKEN" ]]; then
+            echo "Coolify webhook is unconfigured. Deploy the published image from Coolify."
+            exit 0
+          fi
+          if [[ -z "$DEPLOY_WEBHOOK" || -z "$COOLIFY_TOKEN" ]]; then
+            echo "::error::Set both COOLIFY_DEPLOY_WEBHOOK and COOLIFY_API_TOKEN."
+            exit 1
+          fi
+          curl --fail --silent --show-error --request POST \
+            --connect-timeout 15 --max-time 60 --output /dev/null \
+            --header "Authorization: Bearer $COOLIFY_TOKEN" "$DEPLOY_WEBHOOK"
+          echo "Coolify accepted the deployment request. Check Coolify for rollout status." >> "$GITHUB_STEP_SUMMARY"
