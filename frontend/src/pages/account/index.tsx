@@ -151,7 +151,7 @@ function ReviewEditor({
 export default function AccountPage() {
   const router = useRouter();
   const { session, loading, logout } = useAuth();
-  const { favorites, error: accountError } = useAccount();
+  const { favorites, profile, error: accountError } = useAccount();
   const [reviews, setReviews] = useState<MyReview[]>([]);
   const [managedProperties, setManagedProperties] = useState<
     { id: number; name: string; slug: string; status: string }[]
@@ -281,6 +281,11 @@ export default function AccountPage() {
                   </Text>
                 )}
               </Box>
+              {(managedProperties.length > 0 || profile?.role === "staff") && (
+                <Button asChild variant="outline" alignSelf="start">
+                  <NextLink href="/account/analytics">Listing analytics</NextLink>
+                </Button>
+              )}
               {managedProperties.length > 0 && (
                 <Box {...panel}>
                   <Heading as="h2" size="lg" mb={2}>

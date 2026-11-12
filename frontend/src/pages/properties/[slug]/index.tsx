@@ -28,6 +28,9 @@ import type { GetServerSideProps } from "next";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 
+import { useEffect } from "react";
+import { API_URL } from "@/utils/api/auth";
+
 type PropertyPageProps = {
   property: Property | null;
   error: string;
@@ -64,6 +67,29 @@ export const getServerSideProps: GetServerSideProps<
 export default function PropertyPage({ property, error }: PropertyPageProps) {
   const router = useRouter();
   const { profile } = useAccount();
+  const slug = property?.slug;
+  useEffect(() => {
+    if (!slug) return;
+    // Wait for a visible page and cancel the queued event if React remounts it.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function trackView() {
+      if (document.visibilityState !== "visible") return;
+      document.removeEventListener("visibilitychange", trackView);
+      timer = setTimeout(() => {
+        void fetch(`${API_URL}/properties/${encodeURIComponent(slug!)}/views`, {
+          method: "POST",
+          credentials: "omit",
+          keepalive: true,
+        }).catch(() => {});
+      }, 0);
+    }
+    document.addEventListener("visibilitychange", trackView);
+    trackView();
+    return () => {
+      document.removeEventListener("visibilitychange", trackView);
+      clearTimeout(timer);
+    };
+  }, [slug]);
   const website = safeUrl(property?.website_url);
   const agencyWebsite = safeUrl(property?.agency?.website_url);
   const propertyPhoneDigits = property?.phone?.replace(/\D/g, "");

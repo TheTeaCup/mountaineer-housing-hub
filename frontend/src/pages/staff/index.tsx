@@ -15,6 +15,7 @@ import NextLink from "next/link";
 import { useEffect, useState } from "react";
 import {
   FiAlertCircle,
+  FiBarChart2,
   FiBriefcase,
   FiClipboard,
   FiHome,
@@ -57,6 +58,16 @@ export default function StaffHome() {
     };
   }, [profile?.role, revision]);
   const cards = [
+    {
+      href: "/account/analytics",
+      title: "Listing analytics",
+      icon: FiBarChart2,
+      description: "See listing views across the housing catalog.",
+      count: undefined,
+      label: "",
+      pending: false,
+      detail: "",
+    },
     {
       href: "/staff/audit",
       title: "Setup audit",
@@ -216,11 +227,13 @@ export default function StaffHome() {
                         color="var(--site-muted)"
                         role="status"
                       >
-                        {countError
-                          ? "Count unavailable"
-                          : card.count === undefined
-                            ? "Checking counts…"
-                            : `${card.count} ${card.label}. ${card.detail}`}
+                        {card.href === "/account/analytics"
+                          ? "7, 30, or 90 day reports"
+                          : countError
+                            ? "Count unavailable"
+                            : card.count === undefined
+                              ? "Checking counts…"
+                              : `${card.count} ${card.label}. ${card.detail}`}
                       </Text>
                     </Box>
                   </NextLink>
