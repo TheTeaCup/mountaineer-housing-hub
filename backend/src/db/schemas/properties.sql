@@ -23,6 +23,7 @@ CREATE TABLE properties (
   postal_code VARCHAR(10) NULL,
   latitude DECIMAL(9, 6) NULL,
   longitude DECIMAL(9, 6) NULL,
+  bus_route_ids JSON NULL,
   website_url VARCHAR(2048) NULL,
   phone VARCHAR(32) NULL,
   status ENUM ('draft', 'published', 'archived') NOT NULL DEFAULT 'draft',

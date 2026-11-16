@@ -14,6 +14,7 @@ export interface PropertyRow {
   postal_code: string | null;
   latitude: number | string | null;
   longitude: number | string | null;
+  bus_route_ids: string[] | null;
   website_url: string | null;
   phone: string | null;
   agency_id: number | null;
@@ -68,6 +69,7 @@ export function publicProperty(
       .join(", "),
     latitude: numberOrNull(row.latitude),
     longitude: numberOrNull(row.longitude),
+    bus_route_ids: row.bus_route_ids ?? [],
     website_url: row.website_url,
     phone: row.phone,
     agency:
@@ -107,7 +109,7 @@ export function createPropertiesRouter(
   const router = Router();
   const select = `SELECT p.id, p.name, p.slug, p.property_type, p.description,
     p.address_line1, p.address_line2, p.city, p.state, p.postal_code,
-    p.latitude, p.longitude, p.website_url, p.phone,
+    p.latitude, p.longitude, p.bus_route_ids, p.website_url, p.phone,
     p.agency_id, a.name AS agency_name, a.slug AS agency_slug, a.website_url AS agency_website, a.phone AS agency_phone,
     COALESCE(r.review_count, 0) AS review_count, r.average_rating
     FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id

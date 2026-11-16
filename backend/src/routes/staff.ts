@@ -212,12 +212,10 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(201).json(result);
     } catch (error) {
       if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
-        res
-          .status(409)
-          .json({
-            message:
-              "An account already exists with this email. Open that user to manage access.",
-          });
+        res.status(409).json({
+          message:
+            "An account already exists with this email. Open that user to manage access.",
+        });
         return;
       }
       throw error;
@@ -235,24 +233,19 @@ export function createStaffRouter(deps: AccountDependencies) {
       !["user", "staff"].includes(role) ||
       !["active", "suspended"].includes(status)
     ) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Enter a username and choose a valid role and account status.",
-        });
+      res.status(400).json({
+        message: "Enter a username and choose a valid role and account status.",
+      });
       return;
     }
     if (
       String(req.params.id) === String(res.locals.userId) &&
       (role !== "staff" || status !== "active")
     ) {
-      res
-        .status(400)
-        .json({
-          message:
-            "You cannot suspend or remove staff access from your own account.",
-        });
+      res.status(400).json({
+        message:
+          "You cannot suspend or remove staff access from your own account.",
+      });
       return;
     }
     const existingUsers = await deps.query(
@@ -328,12 +321,9 @@ export function createStaffRouter(deps: AccountDependencies) {
       [req.params.id],
     );
     if (!users[0]) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Setup links are only available for active external accounts.",
-        });
+      res.status(400).json({
+        message: "Setup links are only available for active external accounts.",
+      });
       return;
     }
     res.setHeader("Cache-Control", "no-store");
@@ -354,11 +344,9 @@ export function createStaffRouter(deps: AccountDependencies) {
       req.params.agencyId,
     ]);
     if (!users.length || !agencies.length) {
-      res
-        .status(400)
-        .json({
-          message: "Choose an active non-staff user and an existing agency.",
-        });
+      res.status(400).json({
+        message: "Choose an active non-staff user and an existing agency.",
+      });
       return;
     }
     await deps.execute(
@@ -674,7 +662,7 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.get("/properties/:id", async (req, res) => {
     const rows = await deps.query<{ id: number } & Record<string, unknown>>(
-      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone FROM properties WHERE id = ?",
+      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone, bus_route_ids FROM properties WHERE id = ?",
       [req.params.id],
     );
     if (!rows.length) {
@@ -964,11 +952,9 @@ export function createStaffRouter(deps: AccountDependencies) {
           ? null
           : Number(req.body.agency_id)) !== rows[0].agency_id
       ) {
-        res
-          .status(403)
-          .json({
-            message: "Only staff can change the agency assigned to a property.",
-          });
+        res.status(403).json({
+          message: "Only staff can change the agency assigned to a property.",
+        });
         return;
       }
     }
@@ -1057,10 +1043,31 @@ export function createStaffRouter(deps: AccountDependencies) {
       });
       return;
     }
+    const routeIds: unknown = req.body.bus_route_ids;
+    let busRoutes: string | null = null;
+    if (routeIds !== undefined) {
+      if (!res.locals.isStaff) {
+        res
+          .status(403)
+          .json({ message: "Only staff can edit AppalCART routes." });
+        return;
+      }
+      if (
+        !Array.isArray(routeIds) ||
+        routeIds.length > 100 ||
+        routeIds.some(
+          (id) => typeof id !== "string" || !/^[\w-]{1,64}$/.test(id),
+        )
+      ) {
+        res.status(400).json({ message: "Choose valid AppalCART routes." });
+        return;
+      }
+      busRoutes = JSON.stringify([...new Set(routeIds)]);
+    }
     let result;
     try {
       result = await deps.execute(
-        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ? WHERE id = ?",
+        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ?, bus_route_ids = COALESCE(?, bus_route_ids) WHERE id = ?",
         [
           slug,
           property.name,
@@ -1076,6 +1083,7 @@ export function createStaffRouter(deps: AccountDependencies) {
           latitude,
           longitude,
           phone,
+          busRoutes,
           req.params.id,
         ],
       );
