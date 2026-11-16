@@ -13,6 +13,7 @@ import {
   SimpleGrid,
   Text,
 } from "@chakra-ui/react";
+import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -37,9 +38,12 @@ export default function PropertiesList() {
       <SEO title="Properties" />
       <Box bg="var(--site-bg)" color="var(--site-fg)" flex="1">
         <Container maxW="1200px" py={10}>
-          <Heading as="h1" mb={3}>
-            Find your next home
-          </Heading>
+          <Flex align="center" justify="space-between" gap={4} mb={3}>
+            <Heading as="h1">Find your next home</Heading>
+            <NextLink href="/compare">
+              <Button variant="outline">Compare apartments</Button>
+            </NextLink>
+          </Flex>
           <Text mb={6}>
             Explore apartment communities and standalone rentals. A community
             with several buildings has one listing; separate properties managed

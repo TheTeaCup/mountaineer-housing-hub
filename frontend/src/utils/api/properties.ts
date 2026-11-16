@@ -20,7 +20,10 @@ export async function fetchProperties(
   shuffle = false,
 ): Promise<Property[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  if (shuffle) params.set("sort", "random");
+  if (shuffle) {
+    params.set("sort", "random");
+    params.set("photos", "required");
+  }
   const response = await fetch(`${API_URL}/properties?${params}`, {
     signal,
     cache: "no-store",

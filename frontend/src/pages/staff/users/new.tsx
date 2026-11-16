@@ -73,8 +73,10 @@ export default function NewExternalUser() {
               <Stack gap={5}>
                 <Text>
                   External accounts can sign in with any non-App State email
-                  address and a password they choose. They receive access only
-                  to agencies or individual properties assigned by staff.
+                  address and a password they choose. They start as Property
+                  Managers and receive access only to agencies or individual
+                  properties assigned by staff. Staff can change their role
+                  later.
                 </Text>
                 <Field.Root required>
                   <Field.Label>Account name</Field.Label>

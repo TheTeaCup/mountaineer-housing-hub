@@ -26,8 +26,16 @@ const usd = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-export default function CostCalculator() {
-  const [amounts, setAmounts] = useState<Partial<Record<Cost, number>>>({});
+export default function CostCalculator({
+  initialRent = null,
+}: {
+  initialRent?: number | null;
+}) {
+  const [amounts, setAmounts] = useState<Partial<Record<Cost, number>>>(() =>
+    initialRent === null
+      ? {}
+      : { rent: Math.max(0, Math.round(initialRent * 100)) },
+  );
   const [parkingIsMonthly, setParkingIsMonthly] = useState(true);
   const recurring = costs.reduce(
     (total, { id }) =>
@@ -50,6 +58,8 @@ export default function CostCalculator() {
       <Text mb={4} fontSize="sm" color="var(--site-muted)">
         Enter the rent and fees you expect to pay in dollars. Leave included
         costs blank.
+        {initialRent !== null &&
+          " Rent is prefilled with the lowest published starting price; adjust it for your floor plan."}
       </Text>
       <SimpleGrid columns={{ base: 1, sm: 2 }} gap={3}>
         {costs.map(({ id, label }) => (
@@ -61,6 +71,9 @@ export default function CostCalculator() {
               min={0}
               step="0.01"
               placeholder="0.00"
+              defaultValue={
+                id === "rent" && initialRent !== null ? initialRent : undefined
+              }
               onChange={(event) => {
                 const amount = event.currentTarget.valueAsNumber;
                 const cents = Number.isFinite(amount)

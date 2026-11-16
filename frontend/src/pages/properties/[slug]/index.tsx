@@ -109,6 +109,15 @@ export default function PropertyPage({
   const previewPhoto = property?.photos.find((photo) =>
     safeUrl(photo.image_url, true),
   );
+  const startingRent = property?.floor_plans.reduce<number | null>(
+    (lowest, plan) =>
+      plan.rent_min === null
+        ? lowest
+        : lowest === null
+          ? plan.rent_min
+          : Math.min(lowest, plan.rent_min),
+    null,
+  );
   return (
     <>
       <SEO
@@ -211,7 +220,10 @@ export default function PropertyPage({
                       </Text>
                     )}
                   </Box>
-                  <CostCalculator key={`cost-${property.slug}`} />
+                  <CostCalculator
+                    key={`cost-${property.slug}`}
+                    initialRent={startingRent}
+                  />
                   <PropertyReviews key={property.slug} slug={property.slug} />
                 </Stack>
                 <Box
@@ -235,6 +247,13 @@ export default function PropertyPage({
                   )}
                   <Stack gap={4}>
                     <FavoriteButton slug={property.slug} />
+                    <NextLink
+                      href={`/compare?properties=${encodeURIComponent(property.slug)}`}
+                    >
+                      <Button variant="outline" w="100%">
+                        Compare apartments
+                      </Button>
+                    </NextLink>
                     {website && (
                       <a
                         href={website}
@@ -281,11 +300,15 @@ export default function PropertyPage({
                         </Button>
                       </NextLink>
                     )}
-                    <NextLink href="/submit">
-                      <Button variant="outline" w="100%">
-                        Write a review
-                      </Button>
-                    </NextLink>
+                    {profile?.role !== "property_manager" && (
+                      <NextLink
+                        href={`/submit?property=${encodeURIComponent(property.slug)}`}
+                      >
+                        <Button variant="outline" w="100%">
+                          Write a review
+                        </Button>
+                      </NextLink>
+                    )}
                   </Stack>
                   {busRouteNames.length > 0 && (
                     <Box

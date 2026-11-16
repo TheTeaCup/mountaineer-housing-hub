@@ -1,3 +1,4 @@
+import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { FormPageSkeleton } from "@/components/ui/page-skeletons";
 import SignInRequired from "@/components/ui/sign-in-required";
@@ -15,13 +16,16 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import ReviewPhotoPicker from "./review-photo-picker";
 import StarRating from "./star-rating";
 import SubmissionTerms, { useSubmissionTerms } from "./submission-terms";
 
 export default function ReviewForm() {
+  const router = useRouter();
   const { session, loading } = useAuth();
+  const { profile } = useAccount();
   const terms = useSubmissionTerms(!!session);
   const [properties, setProperties] = useState<
     { slug: string; name: string; agency_name?: string | null }[]
@@ -32,6 +36,8 @@ export default function ReviewForm() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [compressingPhotos, setCompressingPhotos] = useState(false);
   const [error, setError] = useState("");
+  const requestedProperty =
+    typeof router.query.property === "string" ? router.query.property : "";
   useEffect(() => {
     if (!session) return;
     let active = true;
@@ -51,13 +57,25 @@ export default function ReviewForm() {
       active = false;
     };
   }, [session]);
-  if (loading) return <FormPageSkeleton />;
+  if (loading || (session && !profile)) return <FormPageSkeleton />;
   if (!session)
     return (
       <SignInRequired
         title="Sign in to share your experience"
         description="Use your App State account to submit an apartment review or suggest a missing property. Your identity is not displayed with published reviews."
       />
+    );
+  if (profile?.role === "property_manager")
+    return (
+      <Box>
+        <Heading as="h1" mb={3}>
+          Apartment reviews are for residents
+        </Heading>
+        <Text>
+          Property Manager accounts cannot submit apartment reviews. Use a
+          personal User account to share a resident experience.
+        </Text>
+      </Box>
     );
   return (
     <>
@@ -109,7 +127,12 @@ export default function ReviewForm() {
               Apartment <Field.RequiredIndicator />
             </Field.Label>
             <NativeSelect.Root disabled={propertiesLoading}>
-              <NativeSelect.Field name="slug" placeholder="Select an apartment">
+              <NativeSelect.Field
+                key={requestedProperty}
+                name="slug"
+                placeholder="Select an apartment"
+                defaultValue={requestedProperty}
+              >
                 {properties.map((property) => (
                   <option key={property.slug} value={property.slug}>
                     {property.name}

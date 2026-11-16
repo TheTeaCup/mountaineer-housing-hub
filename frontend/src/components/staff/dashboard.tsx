@@ -6,7 +6,7 @@ import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import PaginationControls from "@/components/ui/pagination-controls";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
-import { accountRequest } from "@/utils/api/account";
+import { accountRequest, accountRoleLabel } from "@/utils/api/account";
 import { formatPhoneNumber } from "@/utils/format-phone";
 import {
   Box,
@@ -782,7 +782,7 @@ export default function StaffDashboard({
                             {[
                               user.username || "View user",
                               user.email,
-                              user.role,
+                              accountRoleLabel(user.role),
                               user.status,
                               new Date(user.created_at).toLocaleDateString(),
                               user.last_login

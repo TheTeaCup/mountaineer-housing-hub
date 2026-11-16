@@ -1,13 +1,16 @@
+import { useAccount } from "@/components/ui/account-provider";
 import PaginationControls from "@/components/ui/pagination-controls";
 import UserAvatar from "@/components/ui/user-avatar";
 import { accountRequest, type AccountProfile } from "@/utils/api/account";
-import { Box, Flex, Heading, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
+import NextLink from "next/link";
 import { useEffect, useState } from "react";
 import ReviewPhotoGrid, { type ReviewPhoto } from "./review-photo-grid";
 
 const PAGE_SIZE = 5;
 
 export default function PropertyReviews({ slug }: { slug: string }) {
+  const { profile } = useAccount();
   const [reviews, setReviews] = useState<
     {
       id: number;
@@ -62,7 +65,20 @@ export default function PropertyReviews({ slug }: { slug: string }) {
       ) : error ? (
         <Text role="status">{error}</Text>
       ) : !reviews.length ? (
-        <Text>No published reviews yet.</Text>
+        <Box>
+          <Text mb={3}>No published reviews yet.</Text>
+          {profile?.role === "property_manager" ? (
+            <Text fontSize="sm" color="var(--site-muted)">
+              Property Manager accounts cannot submit resident reviews.
+            </Text>
+          ) : (
+            <NextLink href={`/submit?property=${encodeURIComponent(slug)}`}>
+              <Button bg="#ffc72c" color="#111111">
+                Submit yours today
+              </Button>
+            </NextLink>
+          )}
+        </Box>
       ) : (
         <Stack gap={4}>
           {paginatedReviews.map((review) => (

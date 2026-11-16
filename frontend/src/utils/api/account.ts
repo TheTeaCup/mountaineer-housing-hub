@@ -1,5 +1,12 @@
 import { API_URL } from "./auth";
 
+export const accountRoleLabel = (role: string) =>
+  role === "property_manager"
+    ? "Property Manager"
+    : role === "staff"
+      ? "Staff"
+      : "User";
+
 export async function accountRequest<T>(
   path: string,
   method = "GET",

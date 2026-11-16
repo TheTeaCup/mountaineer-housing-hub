@@ -5,7 +5,7 @@ import UserEditor, {
 } from "@/components/staff/user-editor";
 import { useAccount } from "@/components/ui/account-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
-import { accountRequest } from "@/utils/api/account";
+import { accountRequest, accountRoleLabel } from "@/utils/api/account";
 import {
   Box,
   Button,
@@ -158,14 +158,19 @@ export default function StaffUserDetailPage() {
                 </Heading>
                 <Text mt={2}>{result.user.email}</Text>
                 <Text color="var(--site-muted)" mt={1}>
-                  {result.user.role} · {result.user.status} · joined{" "}
-                  {new Date(result.user.created_at).toLocaleDateString()}
+                  {accountRoleLabel(result.user.role)} · {result.user.status} ·
+                  joined {new Date(result.user.created_at).toLocaleDateString()}
                 </Text>
               </Box>
 
               {result.user.role === "staff" ? (
                 <Text>
                   Staff members already have access to every property.
+                </Text>
+              ) : result.user.role !== "property_manager" ? (
+                <Text>
+                  Change this account’s role to Property Manager before
+                  assigning property or agency access.
                 </Text>
               ) : result.user.status !== "active" ? (
                 <Text role="alert">

@@ -142,13 +142,16 @@ export default function UserEditor({
               <Field.Label>Role</Field.Label>
               <NativeSelect.Root>
                 <NativeSelect.Field name="role" defaultValue={user.role}>
-                  <option value="user">User / property editor</option>
-                  {user.account_kind !== "external" && (
-                    <option value="staff">Staff</option>
-                  )}
+                  <option value="user">User</option>
+                  <option value="property_manager">Property Manager</option>
+                  <option value="staff">Staff</option>
                 </NativeSelect.Field>
                 <NativeSelect.Indicator />
               </NativeSelect.Root>
+              <Field.HelperText>
+                Property managers receive access only to assigned properties or
+                agencies. Staff can manage the entire site.
+              </Field.HelperText>
             </Field.Root>
             <Field.Root>
               <Field.Label>Account status</Field.Label>
@@ -267,7 +270,7 @@ export function AgencyAccessEditor({
         {!assignedAgencies.length && (
           <Text color="var(--site-muted)">No agency access assigned.</Text>
         )}
-        {user.role !== "staff" && user.status === "active" && (
+        {user.role === "property_manager" && user.status === "active" && (
           <Flex gap={3} direction={{ base: "column", sm: "row" }}>
             <NativeSelect.Root flex="1">
               <NativeSelect.Field

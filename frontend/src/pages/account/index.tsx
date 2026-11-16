@@ -30,9 +30,11 @@ const ACCOUNT_PAGE_SIZE = 5;
 function ReviewEditor({
   review,
   refresh,
+  canEdit,
 }: {
   review: MyReview;
   refresh: () => Promise<void>;
+  canEdit: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(review.body);
@@ -113,16 +115,18 @@ function ReviewEditor({
           <Text whiteSpace="pre-wrap">{review.body}</Text>
           <ReviewPhotoGrid photos={review.photos} />
           <Flex gap={3} mt={3}>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setBody(review.body);
-                setRating(review.rating);
-                setEditing(true);
-              }}
-            >
-              Edit
-            </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBody(review.body);
+                  setRating(review.rating);
+                  setEditing(true);
+                }}
+              >
+                Edit
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setDeleting(true)}>
               Delete
             </Button>
@@ -330,6 +334,7 @@ export default function AccountPage() {
                         key={review.id}
                         review={review}
                         refresh={refreshReviews}
+                        canEdit={profile?.role !== "property_manager"}
                       />
                     ))}
                     <PaginationControls
