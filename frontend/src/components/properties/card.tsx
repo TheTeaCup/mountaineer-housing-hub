@@ -59,16 +59,22 @@ export default function PropertiesCard({ property }: { property: Property }) {
             : "No published reviews yet"}
         </Text>
         <Box mt="auto" pt={2}>
-          <NextLink href={`/properties/${encodeURIComponent(property.slug)}`}>
-            <Button
-              w="100%"
-              bg="#111111"
-              color="white"
-              _hover={{ bg: "#333333" }}
+          <Button
+            asChild
+            position="static"
+            w="100%"
+            bg="#111111"
+            color="white"
+            _hover={{ bg: "#333333" }}
+            _after={{ content: '""', position: "absolute", inset: 0 }}
+          >
+            <NextLink
+              href={`/properties/${encodeURIComponent(property.slug)}`}
+              aria-label={`View More Info about ${property.name}`}
             >
-              View full profile
-            </Button>
-          </NextLink>
+              View More Info
+            </NextLink>
+          </Button>
         </Box>
       </Stack>
     </Box>

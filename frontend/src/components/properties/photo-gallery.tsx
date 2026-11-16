@@ -182,6 +182,7 @@ export default function PropertyPhotoGallery({
                   </Text>
                   <Button
                     type="button"
+                    variant="outline"
                     onClick={() => advance(1)}
                     aria-label="Next photo"
                   >
