@@ -1,7 +1,9 @@
 # Mountaineer Housing Hub
 
-Staff user management supports account names, public usernames, roles, account
-suspension, individual property grants, and agency-wide property grants.
+Staff user management supports User, Property Manager, and Staff roles, including
+promotion and demotion, account suspension, individual property grants, and
+agency-wide property grants. Property Manager accounts cannot submit resident
+reviews.
 Create non-App State accounts at `/staff/users/new`, privately share the returned
 24-hour, single-use password setup link, and assign access from the user editor.
 Account owners choose their own passwords. Staff can issue replacement links for
@@ -15,9 +17,9 @@ inherited access; individual property grants remain separate. Property editors
 cannot change a property's managing agency. These assignments provide the access
 boundary for future agency analytics; no traffic analytics are collected yet.
 
-Before deploying this version to an existing database, run
-`npm run db:agency-access` in `backend` (migration 008). New database setup includes
-these tables automatically. Deploy the frontend and backend together. The staff
+Before deploying this version to an existing database, run migration 011 to add
+the Property Manager role and migrate existing scoped editors. New database
+setup includes the role automatically. Deploy the frontend and backend together. The staff
 dashboard uses `/staff/dashboard` for pending suggestion/review counts, audit
 fixes, and total agencies/users. All dashboard cards share one layout.
 
@@ -40,8 +42,9 @@ version pair. Before deploying these changes to an existing database, run
 table automatically. Update the version constants in
 `backend/src/routes/submission-terms.ts` whenever either published policy changes.
 
-The home page requests six random published properties on each load and selects
-a random photo for each card. Other property lists keep their usual ordering.
+The home page requests six random published properties that have at least one
+photo on each load and selects a random photo for each card. Other property
+lists keep their usual ordering.
 
 `/sitemap.xml` includes public pages, all published properties, and agencies with
 published properties. `/robots.txt` advertises the sitemap. The sitemap fetches
