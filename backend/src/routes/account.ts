@@ -189,6 +189,18 @@ export function createAccountRouter(deps: AccountDependencies) {
       ),
     );
   });
+  router.get("/managed-agencies", async (_req, res) => {
+    if (res.locals.role !== "property_manager") {
+      res.json([]);
+      return;
+    }
+    res.json(
+      await deps.query(
+        "SELECT a.id, a.name, a.slug FROM agencies a JOIN agency_editors ae ON ae.agency_id = a.id WHERE ae.user_id = ? ORDER BY a.name, a.id",
+        [res.locals.userId],
+      ),
+    );
+  });
   router.get("/submissions", async (req, res) => {
     const page = Math.max(
       1,

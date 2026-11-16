@@ -15,7 +15,7 @@ import { validateHousingSubmission } from "./housing-submission.js";
 import { attachReviewPhotos } from "./review-photos.js";
 import { propertyPhotos } from "./property-photos.js";
 import { loadSetupAudit } from "./setup-audit.js";
-import { canEditProperty } from "./property-access.js";
+import { canEditAgency, canEditProperty } from "./property-access.js";
 import { externalAccountInput, issueSetupLink } from "./external-accounts.js";
 
 const MAX_PROPERTY_PHOTOS = 10;
@@ -135,9 +135,16 @@ export function createStaffRouter(deps: AccountDependencies) {
         return;
       }
     }
+    const agencyMatch = req.path.match(/^\/agencies\/(\d+)(?:\/|$)/);
+    if (agencyMatch) {
+      if (await canEditAgency(deps, userId, agencyMatch[1])) {
+        next();
+        return;
+      }
+    }
     res
       .status(403)
-      .json({ message: "Staff or assigned property access required." });
+      .json({ message: "Staff or assigned listing access required." });
   });
   router.get("/audit", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
