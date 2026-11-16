@@ -30,8 +30,9 @@ import type { GetServerSideProps } from "next";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 
+import { accountRequest } from "@/utils/api/account";
 import { API_URL } from "@/utils/api/auth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type PropertyPageProps = {
   property: Property | null;
@@ -77,7 +78,31 @@ export default function PropertyPage({
 }: PropertyPageProps) {
   const router = useRouter();
   const { profile } = useAccount();
+  const [editablePropertyId, setEditablePropertyId] = useState<number | null>(
+    null,
+  );
   const slug = property?.slug;
+  const propertyId = property?.id;
+  useEffect(() => {
+    if (profile?.role !== "property_manager" || !propertyId) return;
+    let active = true;
+    accountRequest<{ id: number }[]>("/account/managed-properties")
+      .then((managedProperties) => {
+        if (active) {
+          setEditablePropertyId(
+            managedProperties.some((managed) => managed.id === propertyId)
+              ? propertyId
+              : null,
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setEditablePropertyId(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [profile?.role, propertyId]);
   useEffect(() => {
     if (!slug) return;
     // Wait for a visible page and cancel the queued event if React remounts it.
@@ -158,6 +183,14 @@ export default function PropertyPage({
                   </Button>
                 </NextLink>
               )}
+              {profile?.role === "property_manager" &&
+                editablePropertyId === property.id && (
+                  <NextLink href={`/account/properties/${property.id}`}>
+                    <Button variant="outline" mb={4}>
+                      Edit property
+                    </Button>
+                  </NextLink>
+                )}
               <Text textTransform="capitalize">
                 {propertyTypeLabel(property.property_type)}
               </Text>

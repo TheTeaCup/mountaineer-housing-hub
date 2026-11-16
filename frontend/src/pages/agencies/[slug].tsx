@@ -1,6 +1,8 @@
 import SEO from "@/components/seo";
+import { useAccount } from "@/components/ui/account-provider";
 import { AgencyDetailSkeleton } from "@/components/ui/page-skeletons";
 import PaginationControls from "@/components/ui/pagination-controls";
+import { accountRequest } from "@/utils/api/account";
 import {
   agencyRatingSummary,
   fetchAgency,
@@ -26,6 +28,7 @@ const PAGE_SIZE = 10;
 
 export default function AgencyPage() {
   const router = useRouter();
+  const { profile } = useAccount();
   const slug = typeof router.query.slug === "string" ? router.query.slug : "";
   const [result, setResult] = useState<{
     slug: string;
@@ -33,6 +36,10 @@ export default function AgencyPage() {
     error: string;
   }>({ slug: "", agency: null, error: "" });
   const [page, setPage] = useState(1);
+  const [editableAgencyId, setEditableAgencyId] = useState<number | null>(null);
+
+  const agency = result.slug === slug ? result.agency : null;
+  const error = result.slug === slug ? result.error : "";
 
   useEffect(() => {
     if (!slug) return;
@@ -51,8 +58,27 @@ export default function AgencyPage() {
     return () => controller.abort();
   }, [slug]);
 
-  const agency = result.slug === slug ? result.agency : null;
-  const error = result.slug === slug ? result.error : "";
+  useEffect(() => {
+    if (profile?.role !== "property_manager" || !agency?.id) return;
+    let active = true;
+    accountRequest<{ id: number }[]>("/account/managed-agencies")
+      .then((managedAgencies) => {
+        if (active) {
+          setEditableAgencyId(
+            managedAgencies.some((managed) => managed.id === agency.id)
+              ? agency.id
+              : null,
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setEditableAgencyId(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [agency?.id, profile?.role]);
+
   const website = safeUrl(agency?.website_url);
   const currentPage = Math.min(
     page,
@@ -90,6 +116,21 @@ export default function AgencyPage() {
                   <Heading as="h1" mb={3}>
                     {agency.name}
                   </Heading>
+                  {profile?.role === "staff" && (
+                    <NextLink href={`/staff/agencies/${agency.id}`}>
+                      <Button variant="outline" mb={4}>
+                        Edit agency profile
+                      </Button>
+                    </NextLink>
+                  )}
+                  {profile?.role === "property_manager" &&
+                    editableAgencyId === agency.id && (
+                      <NextLink href={`/account/agencies/${agency.id}`}>
+                        <Button variant="outline" mb={4}>
+                          Edit agency profile
+                        </Button>
+                      </NextLink>
+                    )}
                   <Text fontSize="lg" fontWeight="medium">
                     {agency.property_count}{" "}
                     {agency.property_count === 1 ? "property" : "properties"}

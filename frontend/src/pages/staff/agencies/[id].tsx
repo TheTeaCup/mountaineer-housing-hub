@@ -27,7 +27,11 @@ interface AgencyForm {
   information: string | null;
 }
 
-export default function EditAgency() {
+export default function EditAgency({
+  assigned = false,
+}: {
+  assigned?: boolean;
+}) {
   const router = useRouter();
   const { profile, error: accessError } = useAccount();
   const id = router.query.id;
@@ -36,7 +40,13 @@ export default function EditAgency() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (profile?.role !== "staff" || typeof id !== "string") return;
+    if (
+      !profile?.role ||
+      (profile.role !== "staff" &&
+        !(assigned && profile.role === "property_manager")) ||
+      typeof id !== "string"
+    )
+      return;
     let active = true;
     accountRequest<AgencyForm>(`/staff/agencies/${id}`)
       .then((result) => {
@@ -48,13 +58,15 @@ export default function EditAgency() {
     return () => {
       active = false;
     };
-  }, [id, profile?.role]);
+  }, [assigned, id, profile?.role]);
 
   return (
     <>
       <SEO title="Edit rental agency" noIndex />
       <Container maxW="800px" py={10}>
-        <NextLink href="/staff/agencies">← Rental agencies</NextLink>
+        <NextLink href={assigned ? "/account" : "/staff/agencies"}>
+          ← {assigned ? "My account" : "Rental agencies"}
+        </NextLink>
         <Heading as="h1" my={5}>
           Edit rental agency
         </Heading>
@@ -63,8 +75,9 @@ export default function EditAgency() {
             {accessError || error}
           </Text>
         ) : null}
-        {profile?.role !== "staff" ? (
-          <Text>Staff access is required.</Text>
+        {profile?.role !== "staff" &&
+        !(assigned && profile?.role === "property_manager") ? (
+          <Text>Assigned agency access is required.</Text>
         ) : !agency || String(agency.id) !== id ? (
           <Text>Loading rental agency…</Text>
         ) : (
