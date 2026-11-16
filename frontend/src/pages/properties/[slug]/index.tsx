@@ -28,8 +28,8 @@ import type { GetServerSideProps } from "next";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 
-import { useEffect } from "react";
 import { API_URL } from "@/utils/api/auth";
+import { useEffect } from "react";
 
 type PropertyPageProps = {
   property: Property | null;

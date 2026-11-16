@@ -283,7 +283,9 @@ export default function AccountPage() {
               </Box>
               {(managedProperties.length > 0 || profile?.role === "staff") && (
                 <Button asChild variant="outline" alignSelf="start">
-                  <NextLink href="/account/analytics">Listing analytics</NextLink>
+                  <NextLink href="/account/analytics">
+                    Listing analytics
+                  </NextLink>
                 </Button>
               )}
               {managedProperties.length > 0 && (

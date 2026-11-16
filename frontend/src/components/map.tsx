@@ -1,8 +1,22 @@
+import {
+  addAppalCartLayers,
+  busLayerFilter,
+  busLayers,
+  busRoutes,
+} from "@/components/appalcart-layer";
 import { useColorMode } from "@/components/ui/color-mode";
 import { useProperties } from "@/hooks/use-properties";
 import { mapLocations } from "@/utils/api/properties";
 import { registerPMTiles } from "@/utils/pmtiles";
-import { Box, Button, Flex, IconButton, Switch, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  IconButton,
+  NativeSelect,
+  Switch,
+  Text,
+} from "@chakra-ui/react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
@@ -30,6 +44,20 @@ export default function MapComponent({
   const [keyOpen, setKeyOpen] = useState(true);
   const [showComplexes, setShowComplexes] = useState(true);
   const [showTownhomes, setShowTownhomes] = useState(true);
+  const [showBusRoutes, setShowBusRoutes] = useState(false);
+  const [busRoute, setBusRoute] = useState("all");
+  const busSelection = showBusRoutes ? busRoute : "";
+  const busSelectionRef = useRef(busSelection);
+  const stopPopup = useRef<maplibregl.Popup | null>(null);
+  useEffect(() => {
+    busSelectionRef.current = busSelection;
+    stopPopup.current?.remove();
+    const map = mapRef.current;
+    for (const layer of busLayers) {
+      if (map?.getLayer(layer))
+        map.setFilter(layer, busLayerFilter(layer, busSelection));
+    }
+  }, [busSelection]);
   const mapped = useMemo(() => mapLocations(properties), [properties]);
   const focused = mapped.find((property) => property.slug === propertyQuery);
   const visible = mapped.filter((property) =>
@@ -99,6 +127,7 @@ export default function MapComponent({
     });
     map.on("load", () => {
       if (disposed) return;
+      stopPopup.current = addAppalCartLayers(map, busSelectionRef.current);
       const data: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
         features: mapped.map((property) => ({
@@ -213,6 +242,8 @@ export default function MapComponent({
           zoom: map.getZoom(),
         };
       }
+      stopPopup.current?.remove();
+      stopPopup.current = null;
       map.remove();
       if (mapRef.current === map) mapRef.current = null;
     };
@@ -347,20 +378,42 @@ export default function MapComponent({
               gap={2}
               flexWrap="wrap"
             >
-              <Switch.Root disabled checked={false} size="sm">
-                <Switch.HiddenInput aria-describedby="bus-routes-coming-soon" />
+              <Switch.Root
+                checked={showBusRoutes}
+                onCheckedChange={({ checked }) => setShowBusRoutes(checked)}
+                size="sm"
+              >
+                <Switch.HiddenInput />
                 <Switch.Control>
                   <Switch.Thumb />
                 </Switch.Control>
                 <Switch.Label>Bus routes</Switch.Label>
               </Switch.Root>
-              <Text
-                id="bus-routes-coming-soon"
-                fontSize="xs"
-                color="var(--site-muted)"
-              >
-                Coming soon
-              </Text>
+              {showBusRoutes && (
+                <>
+                  <NativeSelect.Root size="sm" w="100%">
+                    <NativeSelect.Field
+                      aria-label="AppalCART route"
+                      value={busRoute}
+                      onChange={(event) => setBusRoute(event.target.value)}
+                    >
+                      <option value="all">All AppalCART routes</option>
+                      {busRoutes.map(({ id, name }) => (
+                        <option key={id} value={id}>
+                          {name}
+                        </option>
+                      ))}
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
+                  <Text fontSize="xs" color="var(--site-muted)">
+                    Select a stop to see which routes serve it.
+                  </Text>
+                  <Text fontSize="xs" color="var(--site-muted)" w="100%">
+                    Data sourced from appalcart.com
+                  </Text>
+                </>
+              )}
             </Flex>
             {propertyQuery && !loading && !error && !focused && (
               <Text mt={2} fontSize="sm">
