@@ -71,10 +71,29 @@ export default function ReviewForm() {
         <Heading as="h1" mb={3}>
           Apartment reviews are for residents
         </Heading>
-        <Text>
+        <Text mb={5}>
           Property Manager accounts cannot submit apartment reviews. Use a
           personal User account to share a resident experience.
         </Text>
+        <Box
+          borderWidth="1px"
+          borderColor="var(--site-border)"
+          borderRadius="lg"
+          p={5}
+        >
+          <Heading as="h2" size="md" mb={2}>
+            Manage a property that is missing?
+          </Heading>
+          <Text mb={4}>
+            Submit its details for staff verification. Once approved, staff can
+            connect the property to your manager account.
+          </Text>
+          <NextLink href="/submit/apartment">
+            <Button bg="#ffc72c" color="#111111">
+              Submit a managed property
+            </Button>
+          </NextLink>
+        </Box>
       </Box>
     );
   return (

@@ -1,3 +1,4 @@
+import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
 import { FormPageSkeleton } from "@/components/ui/page-skeletons";
 import SignInRequired from "@/components/ui/sign-in-required";
@@ -29,6 +30,8 @@ const propertyTypes = [
 
 export default function ApartmentForm() {
   const { session, loading } = useAuth();
+  const { profile } = useAccount();
+  const isPropertyManager = profile?.role === "property_manager";
   const terms = useSubmissionTerms(!!session);
   const [kind, setKind] = useState("property");
   const [manager, setManager] = useState("unknown");
@@ -63,7 +66,7 @@ export default function ApartmentForm() {
       active = false;
     };
   }, [session]);
-  if (loading) return <FormPageSkeleton />;
+  if (loading || (session && !profile)) return <FormPageSkeleton />;
   if (!session)
     return (
       <SignInRequired
@@ -73,17 +76,18 @@ export default function ApartmentForm() {
     );
   return (
     <>
-      <NextLink href="/submit">← Back to apartment reviews</NextLink>
+      <NextLink href="/submit">
+        ← Back to {isPropertyManager ? "Submit" : "apartment reviews"}
+      </NextLink>
       <Heading as="h1" mt={4} mb={3}>
-        Suggest a Property or Rental Agency
+        {isPropertyManager
+          ? "Submit a Property You Manage"
+          : "Suggest a Property or Rental Agency"}
       </Heading>
       <Text mb={6}>
-        Suggest one listing for an apartment community or a standalone rental. A
-        community can include several buildings at one location: University
-        Highlands belongs in one community listing. A rental agency, such as
-        ASU4Rent, manages separate properties across town; each property gets
-        its own listing linked to that agency. Staff will verify your
-        suggestion.
+        {isPropertyManager
+          ? "Submit one missing apartment community or standalone rental that you manage. Staff will verify the listing and your relationship to it before publication and account access are granted."
+          : "Suggest one listing for an apartment community or a standalone rental. A community can include several buildings at one location: University Highlands belongs in one community listing. A rental agency, such as ASU4Rent, manages separate properties across town; each property gets its own listing linked to that agency. Staff will verify your suggestion."}
       </Text>
       {notice && (
         <Box
@@ -160,28 +164,30 @@ export default function ApartmentForm() {
         }}
       >
         <Stack gap={5}>
-          <Field.Root>
-            <Field.Label>What is missing from the site?</Field.Label>
-            <NativeSelect.Root>
-              <NativeSelect.Field
-                aria-label="Suggestion type"
-                value={kind}
-                onChange={(e) => {
-                  setKind(e.target.value);
-                  setManager("unknown");
-                  setNotice("");
-                }}
-              >
-                <option value="property">
-                  A property / apartment community
-                </option>
-                <option value="agency">
-                  A rental agency / management company
-                </option>
-              </NativeSelect.Field>
-              <NativeSelect.Indicator color="var(--site-muted)" />
-            </NativeSelect.Root>
-          </Field.Root>
+          {!isPropertyManager && (
+            <Field.Root>
+              <Field.Label>What is missing from the site?</Field.Label>
+              <NativeSelect.Root>
+                <NativeSelect.Field
+                  aria-label="Suggestion type"
+                  value={kind}
+                  onChange={(e) => {
+                    setKind(e.target.value);
+                    setManager("unknown");
+                    setNotice("");
+                  }}
+                >
+                  <option value="property">
+                    A property / apartment community
+                  </option>
+                  <option value="agency">
+                    A rental agency / management company
+                  </option>
+                </NativeSelect.Field>
+                <NativeSelect.Indicator color="var(--site-muted)" />
+              </NativeSelect.Root>
+            </Field.Root>
+          )}
           <Field.Root required>
             <Field.Label>
               {kind === "property"
