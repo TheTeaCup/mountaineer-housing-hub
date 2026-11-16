@@ -3,6 +3,7 @@ import PropertyEditorNav from "@/components/staff/property-editor-nav";
 import type { StaffPropertyPhoto } from "@/components/staff/property-photo-manager";
 import { useAccount } from "@/components/ui/account-provider";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
+import appalCart from "@/data/appalcart.json";
 import type { FloorPlan } from "@/types/properties";
 import { accountRequest } from "@/utils/api/account";
 import { propertyTypeLabel } from "@/utils/api/properties";
@@ -45,6 +46,7 @@ interface PropertyForm {
   latitude: string | number | null;
   longitude: string | number | null;
   phone: string | null;
+  bus_route_ids?: string[] | null;
   photos: StaffPropertyPhoto[];
   floor_plans: FloorPlan[];
 }
@@ -76,6 +78,7 @@ export default function EditProperty({
   const router = useRouter();
   const { profile, error: accessError } = useAccount();
   const role = profile?.role;
+  const canEditBusRoutes = role === "staff" && !suggestion;
   const formRef = useRef<HTMLFormElement | null>(null);
   const [property, setProperty] = useState<PropertyForm | null>(null);
   const [agencies, setAgencies] = useState<AgencyOption[]>([]);
@@ -234,14 +237,16 @@ export default function EditProperty({
                 event.preventDefault();
                 setPending(true);
                 setError("");
-                const data = Object.fromEntries(
-                  new FormData(
-                    event.currentTarget as unknown as HTMLFormElement,
-                  ),
+                const form = new FormData(
+                  event.currentTarget as unknown as HTMLFormElement,
                 );
+                const busRouteIds = form.getAll("bus_route_ids").map(String);
+                form.delete("bus_route_ids");
+                const data = Object.fromEntries(form);
                 try {
                   const edits = {
                     ...data,
+                    ...(canEditBusRoutes ? { bus_route_ids: busRouteIds } : {}),
                     submission_kind: property.submission_kind ?? "property",
                     agency_id:
                       assigned && role !== "staff"
@@ -281,6 +286,9 @@ export default function EditProperty({
                           phone: String(data.phone || "") || null,
                           latitude: String(data.latitude || "") || null,
                           longitude: String(data.longitude || "") || null,
+                          bus_route_ids: canEditBusRoutes
+                            ? busRouteIds
+                            : current.bus_route_ids,
                         }
                       : current,
                   );
@@ -486,6 +494,37 @@ export default function EditProperty({
                       </Field.Root>
                     ))}
                 </SimpleGrid>
+                {canEditBusRoutes && (
+                  <Box
+                    as="fieldset"
+                    borderWidth="1px"
+                    borderColor="var(--site-border)"
+                    borderRadius="lg"
+                    p={4}
+                  >
+                    <Box as="legend" px={2} fontWeight="semibold">
+                      AppalCART routes
+                    </Box>
+                    <Text fontSize="sm" color="var(--site-muted)" mb={3}>
+                      Select all routes that stop at or near this property.
+                    </Text>
+                    <SimpleGrid columns={{ base: 2, md: 3 }} gap={3}>
+                      {appalCart.routes.map(({ id, name }) => (
+                        <Flex as="label" key={id} align="center" gap={2}>
+                          <input
+                            type="checkbox"
+                            name="bus_route_ids"
+                            value={id}
+                            defaultChecked={property.bus_route_ids?.includes(
+                              id,
+                            )}
+                          />
+                          {name}
+                        </Flex>
+                      ))}
+                    </SimpleGrid>
+                  </Box>
+                )}
                 {property.submission_kind !== "agency" && (
                   <Box
                     bg="var(--site-muted-surface)"

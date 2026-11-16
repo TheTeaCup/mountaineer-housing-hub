@@ -1,9 +1,11 @@
+import CostCalculator from "@/components/properties/cost-calculator";
 import FavoriteButton from "@/components/properties/favorite-button";
 import PropertyPhotoGallery from "@/components/properties/photo-gallery";
 import PropertyReviews from "@/components/properties/reviews";
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { PropertyDetailSkeleton } from "@/components/ui/page-skeletons";
+import appalCart from "@/data/appalcart.json";
 import type { Property } from "@/types/properties";
 import {
   fetchProperty,
@@ -34,6 +36,7 @@ import { useEffect } from "react";
 type PropertyPageProps = {
   property: Property | null;
   error: string;
+  busRouteNames?: string[];
 };
 
 export const getServerSideProps: GetServerSideProps<
@@ -46,7 +49,10 @@ export const getServerSideProps: GetServerSideProps<
   res.setHeader("Cache-Control", "no-store");
   try {
     const property = await fetchProperty(slug, AbortSignal.timeout(10_000));
-    return { props: { property, error: "" } };
+    const busRouteNames = appalCart.routes
+      .filter(({ id }) => property.bus_route_ids?.includes(id))
+      .map(({ name }) => name);
+    return { props: { property, error: "", busRouteNames } };
   } catch (error) {
     if (error instanceof PropertyRequestError && error.status === 404) {
       return { notFound: true };
@@ -64,7 +70,11 @@ export const getServerSideProps: GetServerSideProps<
   }
 };
 
-export default function PropertyPage({ property, error }: PropertyPageProps) {
+export default function PropertyPage({
+  property,
+  error,
+  busRouteNames = [],
+}: PropertyPageProps) {
   const router = useRouter();
   const { profile } = useAccount();
   const slug = property?.slug;
@@ -201,6 +211,7 @@ export default function PropertyPage({ property, error }: PropertyPageProps) {
                       </Text>
                     )}
                   </Box>
+                  <CostCalculator key={`cost-${property.slug}`} />
                   <PropertyReviews key={property.slug} slug={property.slug} />
                 </Stack>
                 <Box
@@ -276,6 +287,39 @@ export default function PropertyPage({ property, error }: PropertyPageProps) {
                       </Button>
                     </NextLink>
                   </Stack>
+                  {busRouteNames.length > 0 && (
+                    <Box
+                      mt={5}
+                      pt={4}
+                      borderTopWidth="1px"
+                      borderColor="var(--site-border)"
+                    >
+                      <Heading as="h2" size="sm" mb={2}>
+                        AppalCART routes nearby
+                      </Heading>
+                      <Box
+                        as="ul"
+                        display="flex"
+                        flexWrap="wrap"
+                        gap={2}
+                        listStyleType="none"
+                      >
+                        {busRouteNames.map((name) => (
+                          <Box
+                            as="li"
+                            key={name}
+                            px={2}
+                            py={1}
+                            bg="var(--site-muted-surface)"
+                            borderRadius="md"
+                            fontSize="sm"
+                          >
+                            {name}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
               </Grid>
             </>

@@ -18,6 +18,7 @@ export interface Property {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  bus_route_ids?: string[];
   website_url: string | null;
   phone: string | null;
   agency: {

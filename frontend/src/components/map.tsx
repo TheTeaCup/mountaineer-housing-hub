@@ -11,9 +11,11 @@ import { registerPMTiles } from "@/utils/pmtiles";
 import {
   Box,
   Button,
+  createListCollection,
   Flex,
   IconButton,
-  NativeSelect,
+  Portal,
+  Select,
   Switch,
   Text,
 } from "@chakra-ui/react";
@@ -23,6 +25,13 @@ import { useRouter } from "next/navigation";
 import protomaps from "protomaps-themes-base";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LuChevronDown, LuChevronUp } from "react-icons/lu";
+
+const routeOptions = createListCollection({
+  items: [
+    { value: "all", label: "All AppalCART routes" },
+    ...busRoutes.map(({ id, name }) => ({ value: id, label: name })),
+  ],
+});
 
 const apartmentIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="9" y="5" width="30" height="38" rx="2" fill="#ffc72c" stroke="#111111" stroke-width="4"/><path d="M16 13h5v5h-5zm11 0h5v5h-5zM16 23h5v5h-5zm11 0h5v5h-5z" fill="#111111"/><path d="M20 43V33h8v10" fill="#ffffff" stroke="#111111" stroke-width="3"/></svg>`;
 const townhomeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path d="M4 20L13 9l11 11L35 9l9 11v23H4z" fill="#2563eb" stroke="#111111" stroke-width="4" stroke-linejoin="round"/><path d="M24 20v23M10 28h7v6h-7zm21 0h7v6h-7z" fill="#ffffff" stroke="#111111" stroke-width="3"/><path d="M11 43V36h6v7m14 0V36h6v7" fill="#ffffff" stroke="#111111" stroke-width="3"/></svg>`;
@@ -382,30 +391,68 @@ export default function MapComponent({
                 checked={showBusRoutes}
                 onCheckedChange={({ checked }) => setShowBusRoutes(checked)}
                 size="sm"
+                w="100%"
+                justifyContent="space-between"
               >
                 <Switch.HiddenInput />
+                <Switch.Label>Bus routes</Switch.Label>
                 <Switch.Control>
                   <Switch.Thumb />
                 </Switch.Control>
-                <Switch.Label>Bus routes</Switch.Label>
               </Switch.Root>
               {showBusRoutes && (
                 <>
-                  <NativeSelect.Root size="sm" w="100%">
-                    <NativeSelect.Field
-                      aria-label="AppalCART route"
-                      value={busRoute}
-                      onChange={(event) => setBusRoute(event.target.value)}
-                    >
-                      <option value="all">All AppalCART routes</option>
-                      {busRoutes.map(({ id, name }) => (
-                        <option key={id} value={id}>
-                          {name}
-                        </option>
-                      ))}
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
+                  <Select.Root
+                    collection={routeOptions}
+                    size="sm"
+                    w="100%"
+                    value={[busRoute]}
+                    onValueChange={({ value }) =>
+                      setBusRoute(value[0] ?? "all")
+                    }
+                    positioning={{ sameWidth: true, gutter: 6 }}
+                  >
+                    <Select.Control>
+                      <Select.Trigger
+                        aria-label="AppalCART route"
+                        bg="var(--site-muted-surface)"
+                        borderColor="var(--site-border)"
+                        borderRadius="md"
+                        color="var(--site-heading)"
+                      >
+                        <Select.ValueText />
+                        <Select.Indicator>
+                          <LuChevronDown />
+                        </Select.Indicator>
+                      </Select.Trigger>
+                    </Select.Control>
+                    <Portal>
+                      <Select.Positioner>
+                        <Select.Content
+                          bg="var(--site-surface)"
+                          color="var(--site-fg)"
+                          borderWidth="1px"
+                          borderColor="var(--site-border)"
+                          borderRadius="lg"
+                          maxH="min(16rem, var(--available-height, 16rem))"
+                          overflowY="auto"
+                          p={1}
+                        >
+                          {routeOptions.items.map((item) => (
+                            <Select.Item
+                              key={item.value}
+                              item={item}
+                              borderRadius="md"
+                              _highlighted={{ bg: "var(--site-muted-surface)" }}
+                            >
+                              <Select.ItemText>{item.label}</Select.ItemText>
+                              <Select.ItemIndicator color="var(--site-accent-fg)" />
+                            </Select.Item>
+                          ))}
+                        </Select.Content>
+                      </Select.Positioner>
+                    </Portal>
+                  </Select.Root>
                   <Text fontSize="xs" color="var(--site-muted)">
                     Select a stop to see which routes serve it.
                   </Text>
