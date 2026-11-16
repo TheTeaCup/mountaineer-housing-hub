@@ -7,7 +7,7 @@ CREATE TABLE users (
   email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   auth_image TEXT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'active',
-  role ENUM ('user', 'staff') NOT NULL DEFAULT 'user',
+  role ENUM ('user', 'property_manager', 'staff') NOT NULL DEFAULT 'user',
   last_login TIMESTAMP(3) NULL,
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)

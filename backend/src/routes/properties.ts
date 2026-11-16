@@ -151,11 +151,15 @@ export function createPropertiesRouter(
     const filter = search
       ? " AND (p.name LIKE ? ESCAPE '!' OR p.address_line1 LIKE ? ESCAPE '!' OR p.description LIKE ? ESCAPE '!' OR a.name LIKE ? ESCAPE '!')"
       : "";
+    const photoFilter =
+      req.query.photos === "required"
+        ? " AND EXISTS (SELECT 1 FROM property_photos ph WHERE ph.property_id = p.id AND TRIM(ph.image_url) <> '')"
+        : "";
     const order =
       req.query.sort === "random" ? "RAND()" : "p.updated_at DESC, p.id DESC";
     if (req.query.sort === "random") res.setHeader("Cache-Control", "no-store");
     const rows = await query<PropertyRow>(
-      `${select}${filter} ORDER BY ${order} LIMIT ?`,
+      `${select}${filter}${photoFilter} ORDER BY ${order} LIMIT ?`,
       [...(search ? [term, term, term, term] : []), limit],
     );
     res.json(await hydrate(rows));

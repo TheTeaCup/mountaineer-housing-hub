@@ -192,7 +192,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     try {
       const result = await deps.transaction(async (db) => {
         const user = await db.execute(
-          "INSERT INTO users (auth_name, email) VALUES (?, ?)",
+          "INSERT INTO users (auth_name, email, role) VALUES (?, ?, 'property_manager')",
           [input.name, input.email],
         );
         if (!user.insertId) throw new Error("Account could not be created.");
@@ -230,7 +230,7 @@ export function createStaffRouter(deps: AccountDependencies) {
       typeof username !== "string" ||
       !username.trim() ||
       username.trim().length > 100 ||
-      !["user", "staff"].includes(role) ||
+      !["user", "property_manager", "staff"].includes(role) ||
       !["active", "suspended"].includes(status)
     ) {
       res.status(400).json({
@@ -270,16 +270,6 @@ export function createStaffRouter(deps: AccountDependencies) {
           req.params.id,
         ]);
         if (!users[0]) return { status: 404, message: "User not found." };
-        const external = await db.query(
-          "SELECT user_id FROM external_accounts WHERE user_id = ?",
-          [req.params.id],
-        );
-        if (external.length && role === "staff")
-          return {
-            status: 400,
-            message:
-              "Agency and external accounts use scoped access. Staff access requires an App State account.",
-          };
         if (
           users[0].role === "staff" &&
           users[0].status === "active" &&
@@ -337,7 +327,7 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.put("/users/:id/agencies/:agencyId", async (req, res) => {
     const users = await deps.query(
-      "SELECT id FROM users WHERE id = ? AND status = 'active' AND role <> 'staff'",
+      "SELECT id FROM users WHERE id = ? AND status = 'active' AND role = 'property_manager'",
       [req.params.id],
     );
     const agencies = await deps.query("SELECT id FROM agencies WHERE id = ?", [
@@ -345,7 +335,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     ]);
     if (!users.length || !agencies.length) {
       res.status(400).json({
-        message: "Choose an active non-staff user and an existing agency.",
+        message: "Choose an active property manager and an existing agency.",
       });
       return;
     }
@@ -410,9 +400,12 @@ export function createStaffRouter(deps: AccountDependencies) {
         .json({ message: "Only active users can edit properties." });
       return;
     }
-    if (users[0].role === "staff") {
+    if (users[0].role !== "property_manager") {
       res.status(400).json({
-        message: "Staff members already have access to every property.",
+        message:
+          users[0].role === "staff"
+            ? "Staff members already have access to every property."
+            : "Only property managers can receive property access.",
       });
       return;
     }

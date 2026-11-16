@@ -52,7 +52,12 @@ export function createAccountRouter(deps: AccountDependencies) {
       res.status(401).json({ message: "Please sign in." });
       return;
     }
+    const users = await deps.query<{ role: string }>(
+      "SELECT role FROM users WHERE id = ?",
+      [userId],
+    );
     res.locals.userId = userId;
+    res.locals.role = users[0]?.role ?? "user";
     next();
   });
 
@@ -173,6 +178,10 @@ export function createAccountRouter(deps: AccountDependencies) {
   });
 
   router.get("/managed-properties", async (_req, res) => {
+    if (res.locals.role !== "property_manager") {
+      res.json([]);
+      return;
+    }
     res.json(
       await deps.query(
         "SELECT p.id, p.name, p.slug, p.status FROM properties p WHERE EXISTS (SELECT 1 FROM property_editors pe WHERE pe.property_id = p.id AND pe.user_id = ?) OR EXISTS (SELECT 1 FROM agency_editors ae WHERE ae.agency_id = p.agency_id AND ae.user_id = ?) ORDER BY p.name, p.id",
@@ -247,6 +256,15 @@ export function createAccountRouter(deps: AccountDependencies) {
   });
   router.post(
     "/reviews",
+    (req, res, next) => {
+      if (res.locals.role === "property_manager") {
+        res.status(403).json({
+          message: "Property manager accounts cannot submit apartment reviews.",
+        });
+        return;
+      }
+      next();
+    },
     imageUpload("photos", MAX_REVIEW_PHOTOS),
     async (req, res) => {
       try {
@@ -381,6 +399,12 @@ export function createAccountRouter(deps: AccountDependencies) {
     res.status(201).json({ status: "pending" });
   });
   router.patch("/reviews/:id", async (req, res) => {
+    if (res.locals.role === "property_manager") {
+      res.status(403).json({
+        message: "Property manager accounts cannot submit apartment reviews.",
+      });
+      return;
+    }
     const { rating, body } = req.body ?? {};
     if (
       !Number.isInteger(rating) ||

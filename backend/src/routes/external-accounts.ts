@@ -54,12 +54,10 @@ export function createExternalSetupRouter(deps: AccountDependencies) {
       password.length < 12 ||
       password.length > 128
     ) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Use a valid setup link and a password between 12 and 128 characters.",
-        });
+      res.status(400).json({
+        message:
+          "Use a valid setup link and a password between 12 and 128 characters.",
+      });
       return;
     }
     const digest = tokenHash(token);
@@ -68,12 +66,10 @@ export function createExternalSetupRouter(deps: AccountDependencies) {
       [digest],
     );
     if (!candidates[0]) {
-      res
-        .status(400)
-        .json({
-          message:
-            "This setup link has expired or has already been used. Ask staff for a new link.",
-        });
+      res.status(400).json({
+        message:
+          "This setup link has expired or has already been used. Ask staff for a new link.",
+      });
       return;
     }
     const hash = await hashPassword(password);
@@ -96,11 +92,9 @@ export function createExternalSetupRouter(deps: AccountDependencies) {
       return true;
     });
     if (!activated) {
-      res
-        .status(400)
-        .json({
-          message: "This setup link has expired or has already been used.",
-        });
+      res.status(400).json({
+        message: "This setup link has expired or has already been used.",
+      });
       return;
     }
     res.json({ activated: true });

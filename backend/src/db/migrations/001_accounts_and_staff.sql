@@ -1,7 +1,7 @@
 -- Select the existing database in phpMyAdmin, then run this file once.
 -- Do not run the empty-database bootstrap against your existing database.
 ALTER TABLE users
-ADD COLUMN role ENUM ('user', 'staff') NOT NULL DEFAULT 'user';
+ADD COLUMN role ENUM ('user', 'property_manager', 'staff') NOT NULL DEFAULT 'user';
 
 CREATE TABLE favorites (
   user_id INT NOT NULL,

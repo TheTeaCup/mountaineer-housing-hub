@@ -28,13 +28,15 @@ Linux runner. Pull requests validate the Docker build. Successful builds on
 5. Apply pending migrations to the existing MySQL database before releasing code
    that depends on them, including
    [009_property_daily_views.sql](src/db/migrations/009_property_daily_views.sql)
-   for listing analytics. The API image expects an initialized database.
+   for listing analytics and
+   [011_property_manager_role.sql](src/db/migrations/011_property_manager_role.sql)
+   for explicit User, Property Manager, and Staff roles. The API image expects
+   an initialized database.
 6. Deploy and check the application in Coolify. The image checks `GET /ready`,
    which probes MySQL and Redis. Before switching the public API domain, verify
    readiness and a public catalog request through the new route. After switching
-   the domain, verify sign-in and an image upload. Stop the legacy watcher and
-   its process supervisor after verifying the cutover. Keep the prior working
-   release reference for rollback.
+   the domain, verify sign-in and an image upload. Keep the prior working release
+   reference for rollback.
 
 For automatic redeploys, copy the application-specific **Deploy Webhook** into
 the GitHub Actions secret `COOLIFY_DEPLOY_WEBHOOK` and store a Coolify token with
