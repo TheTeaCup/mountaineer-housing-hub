@@ -30,8 +30,9 @@ Linux runner. Pull requests validate the Docker build. Successful builds on
    [009_property_daily_views.sql](src/db/migrations/009_property_daily_views.sql)
    for listing analytics and
    [011_property_manager_role.sql](src/db/migrations/011_property_manager_role.sql)
-   for explicit User, Property Manager, and Staff roles. The API image expects
-   an initialized database.
+   for explicit User, Property Manager, and Staff roles. Apply
+   [012_property_engagement.sql](src/db/migrations/012_property_engagement.sql)
+   for website clicks and phone taps. The API image expects an initialized database.
 6. Deploy and check the application in Coolify. The image checks `GET /ready`,
    which probes MySQL and Redis. Before switching the public API domain, verify
    readiness and a public catalog request through the new route. After switching

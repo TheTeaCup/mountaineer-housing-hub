@@ -3,11 +3,16 @@ import type { CatalogDatabase } from "./account.js";
 export async function recordPropertyView(
   db: Pick<CatalogDatabase, "execute">,
   slug: string,
+  action:
+    | "views"
+    | "property_website_clicks"
+    | "agency_website_clicks"
+    | "phone_taps" = "views",
 ) {
   await db.execute(
-    `INSERT INTO property_daily_views (property_id, view_date, views)
+    `INSERT INTO property_daily_views (property_id, view_date, ${action})
      SELECT id, UTC_DATE(), 1 FROM properties WHERE slug = ? AND status = 'published'
-     ON DUPLICATE KEY UPDATE views = views + 1`,
+     ON DUPLICATE KEY UPDATE ${action} = ${action} + 1`,
     [slug],
   );
 }
@@ -23,8 +28,14 @@ export async function getPropertyAnalytics(
     slug: string;
     status: string;
     views: string | number;
+    property_website_clicks: string | number;
+    agency_website_clicks: string | number;
+    phone_taps: string | number;
   }>(
-    `SELECT p.id, p.name, p.slug, p.status, COALESCE(SUM(v.views), 0) AS views
+    `SELECT p.id, p.name, p.slug, p.status, COALESCE(SUM(v.views), 0) AS views,
+       COALESCE(SUM(v.property_website_clicks), 0) AS property_website_clicks,
+       COALESCE(SUM(v.agency_website_clicks), 0) AS agency_website_clicks,
+       COALESCE(SUM(v.phone_taps), 0) AS phone_taps
      FROM properties p
      JOIN users u ON u.id = ? AND u.status = 'active'
      LEFT JOIN property_daily_views v ON v.property_id = p.id
@@ -37,5 +48,11 @@ export async function getPropertyAnalytics(
      ORDER BY views DESC, p.name, p.id`,
     [userId, days - 1],
   );
-  return rows.map((row) => ({ ...row, views: Number(row.views) }));
+  return rows.map((row) => ({
+    ...row,
+    views: Number(row.views),
+    property_website_clicks: Number(row.property_website_clicks),
+    agency_website_clicks: Number(row.agency_website_clicks),
+    phone_taps: Number(row.phone_taps),
+  }));
 }

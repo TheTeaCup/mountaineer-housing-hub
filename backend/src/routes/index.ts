@@ -12,12 +12,27 @@ import { execute } from "../db/execute.js";
 import { recordPropertyView } from "./property-analytics.js";
 
 const router = Router();
-router.post("/properties/:slug/views", async (req, res) => {
+router.post("/properties/:slug/:event", async (req, res, next) => {
+  const { event, slug } = req.params;
+  const counter =
+    event === "views"
+      ? "views"
+      : event === "property-website-clicks"
+        ? "property_website_clicks"
+        : event === "agency-website-clicks"
+          ? "agency_website_clicks"
+          : event === "phone-taps"
+            ? "phone_taps"
+            : null;
+  if (!counter) {
+    next();
+    return;
+  }
   if (req.headers.origin !== new URL(config.FRONTEND_URL).origin) {
     res.sendStatus(403);
     return;
   }
-  await recordPropertyView({ execute }, req.params.slug);
+  await recordPropertyView({ execute }, slug, counter);
   res.sendStatus(204);
 });
 router.get("/properties/:slug/reviews", async (req, res) => {

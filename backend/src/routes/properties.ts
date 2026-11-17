@@ -155,12 +155,66 @@ export function createPropertiesRouter(
       req.query.photos === "required"
         ? " AND EXISTS (SELECT 1 FROM property_photos ph WHERE ph.property_id = p.id AND TRIM(ph.image_url) <> '')"
         : "";
-    const order =
-      req.query.sort === "random" ? "RAND()" : "p.updated_at DESC, p.id DESC";
-    if (req.query.sort === "random") res.setHeader("Cache-Control", "no-store");
+    const params: unknown[] = search ? [term, term, term, term] : [];
+    let selection = filter + photoFilter;
+    let order = "p.updated_at DESC, p.id DESC";
+    if (req.query.appalcart === "1") {
+      selection += " AND JSON_LENGTH(p.bus_route_ids) > 0";
+    }
+    if (req.query.sort === "recently-reviewed") {
+      const rows = await query<
+        PropertyRow & { review_date: Date; review_excerpt: string }
+      >(
+        `SELECT ranked.*, review.updated_at AS review_date, LEFT(review.body, 180) AS review_excerpt
+         FROM (${select}${selection}) ranked
+         JOIN reviews review ON review.id = (
+           SELECT id FROM reviews WHERE property_id = ranked.id AND status = 'published'
+           ORDER BY updated_at DESC, id DESC LIMIT 1
+         )
+         ORDER BY review.updated_at DESC, review.id DESC LIMIT ?`,
+        [...params, limit],
+      );
+      const properties = await hydrate(rows);
+      res.json(
+        properties.map((property, index) => ({
+          ...property,
+          latest_review: {
+            date: rows[index].review_date,
+            excerpt: rows[index].review_excerpt,
+          },
+        })),
+      );
+      return;
+    }
+    if (req.query.sort === "top-rated") {
+      selection += " AND r.review_count >= 3";
+      order = "r.average_rating DESC, r.review_count DESC, p.id DESC";
+    }
+    if (req.query.sort === "sponsored") {
+      const slugs = [
+        ...new Set(
+          (process.env.SPONSORED_PROPERTY_SLUGS ?? "")
+            .split(",")
+            .map((slug) => slug.trim())
+            .filter(Boolean),
+        ),
+      ];
+      if (!slugs.length) {
+        res.json([]);
+        return;
+      }
+      const placeholders = slugs.map(() => "?").join(", ");
+      selection += ` AND p.slug IN (${placeholders})`;
+      order = `FIELD(p.slug, ${placeholders})`;
+      params.push(...slugs, ...slugs);
+    }
+    if (req.query.sort === "random") {
+      order = "RAND()";
+      res.setHeader("Cache-Control", "no-store");
+    }
     const rows = await query<PropertyRow>(
-      `${select}${filter}${photoFilter} ORDER BY ${order} LIMIT ?`,
-      [...(search ? [term, term, term, term] : []), limit],
+      `${select}${selection} ORDER BY ${order} LIMIT ?`,
+      [...params, limit],
     );
     res.json(await hydrate(rows));
   });
