@@ -13,17 +13,19 @@ export function mapLocations(properties: Property[]) {
   );
 }
 
+export type PropertyMode =
+  "random" | "recently-reviewed" | "top-rated" | "sponsored" | "appalcart";
+
 export async function fetchProperties(
   query = "",
   limit = 100,
   signal?: AbortSignal,
-  shuffle = false,
+  mode?: PropertyMode,
 ): Promise<Property[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  if (shuffle) {
-    params.set("sort", "random");
-    params.set("photos", "required");
-  }
+  if (mode === "appalcart") params.set("appalcart", "1");
+  else if (mode) params.set("sort", mode);
+  if (mode === "random") params.set("photos", "required");
   const response = await fetch(`${API_URL}/properties?${params}`, {
     signal,
     cache: "no-store",

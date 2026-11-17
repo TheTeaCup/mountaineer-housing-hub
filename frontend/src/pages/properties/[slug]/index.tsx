@@ -23,6 +23,7 @@ import {
   Container,
   Grid,
   Heading,
+  SimpleGrid,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -71,6 +72,21 @@ export const getServerSideProps: GetServerSideProps<
   }
 };
 
+function trackPropertyEvent(
+  slug: string,
+  event:
+    | "views"
+    | "property-website-clicks"
+    | "agency-website-clicks"
+    | "phone-taps",
+) {
+  void fetch(`${API_URL}/properties/${encodeURIComponent(slug)}/${event}`, {
+    method: "POST",
+    credentials: "omit",
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export default function PropertyPage({
   property,
   error,
@@ -111,11 +127,7 @@ export default function PropertyPage({
       if (document.visibilityState !== "visible") return;
       document.removeEventListener("visibilitychange", trackView);
       timer = setTimeout(() => {
-        void fetch(`${API_URL}/properties/${encodeURIComponent(slug!)}/views`, {
-          method: "POST",
-          credentials: "omit",
-          keepalive: true,
-        }).catch(() => {});
+        trackPropertyEvent(slug!, "views");
       }, 0);
     }
     document.addEventListener("visibilitychange", trackView);
@@ -127,8 +139,18 @@ export default function PropertyPage({
   }, [slug]);
   const website = safeUrl(property?.website_url);
   const agencyWebsite = safeUrl(property?.agency?.website_url);
-  const propertyPhoneDigits = property?.phone?.replace(/\D/g, "");
-  const agencyPhoneDigits = property?.agency?.phone?.replace(/\D/g, "");
+  const propertyPhone = property?.phone?.trim();
+  const contactPhone = propertyPhone || property?.agency?.phone?.trim();
+  let editHref: string | undefined;
+  if (property && profile?.role === "staff") {
+    editHref = `/staff/properties/${property.id}`;
+  } else if (
+    property &&
+    profile?.role === "property_manager" &&
+    editablePropertyId === property.id
+  ) {
+    editHref = `/account/properties/${property.id}`;
+  }
   const hasCoordinates =
     property?.latitude !== null && property?.longitude !== null;
   const previewPhoto = property?.photos.find((photo) =>
@@ -176,21 +198,6 @@ export default function PropertyPage({
               <Heading as="h1" mt={6} mb={3}>
                 {property.name}
               </Heading>
-              {profile?.role === "staff" && (
-                <NextLink href={`/staff/properties/${property.id}`}>
-                  <Button variant="outline" mb={4}>
-                    Edit property
-                  </Button>
-                </NextLink>
-              )}
-              {profile?.role === "property_manager" &&
-                editablePropertyId === property.id && (
-                  <NextLink href={`/account/properties/${property.id}`}>
-                    <Button variant="outline" mb={4}>
-                      Edit property
-                    </Button>
-                  </NextLink>
-                )}
               <Text textTransform="capitalize">
                 {propertyTypeLabel(property.property_type)}
               </Text>
@@ -211,53 +218,6 @@ export default function PropertyPage({
                         "A description has not been provided yet."}
                     </Text>
                   </Box>
-                  <Box>
-                    <Heading as="h2" size="lg" mb={4}>
-                      Floor plans and pricing
-                    </Heading>
-                    {property.floor_plans.length ? (
-                      <Stack gap={3}>
-                        {property.floor_plans.map((plan) => (
-                          <Box
-                            key={plan.id}
-                            p={5}
-                            bg="var(--site-surface)"
-                            borderWidth="1px"
-                            borderColor="var(--site-border)"
-                            borderRadius="lg"
-                          >
-                            <Heading as="h3" size="md">
-                              {plan.name}
-                            </Heading>
-                            <Text my={2}>
-                              {plan.bedrooms === 0
-                                ? "Studio"
-                                : `${plan.bedrooms} beds`}{" "}
-                              · {plan.bathrooms} baths
-                              {plan.square_feet
-                                ? ` · ${plan.square_feet.toLocaleString()} sq ft`
-                                : ""}
-                            </Text>
-                            <Text fontWeight="bold">{planRent(plan)}</Text>
-                            {plan.description && (
-                              <Text mt={3} whiteSpace="pre-wrap">
-                                {plan.description}
-                              </Text>
-                            )}
-                          </Box>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Text>
-                        Floor plans and pricing have not been added yet.
-                      </Text>
-                    )}
-                  </Box>
-                  <CostCalculator
-                    key={`cost-${property.slug}`}
-                    initialRent={startingRent}
-                  />
-                  <PropertyReviews key={property.slug} slug={property.slug} />
                 </Stack>
                 <Box
                   bg="var(--site-surface)"
@@ -278,69 +238,119 @@ export default function PropertyPage({
                       </NextLink>
                     </Text>
                   )}
-                  <Stack gap={4}>
-                    <FavoriteButton slug={property.slug} />
-                    <NextLink
-                      href={`/compare?properties=${encodeURIComponent(property.slug)}`}
-                    >
-                      <Button variant="outline" w="100%">
-                        Compare apartments
-                      </Button>
-                    </NextLink>
+                  <Stack
+                    gap={3}
+                    css={{
+                      "& .chakra-button": {
+                        width: "100%",
+                        borderRadius: "md",
+                        borderColor: "var(--site-muted)",
+                        color: "var(--site-heading)",
+                        _hover: { bg: "var(--site-muted-surface)" },
+                        _focusVisible: {
+                          outline: "2px solid var(--site-accent-fg)",
+                          outlineOffset: "2px",
+                        },
+                      },
+                      "& .chakra-button[data-primary]": {
+                        bg: "#ffc72c",
+                        borderColor: "#ffc72c",
+                        color: "#111111",
+                        _hover: { bg: "#e5b025", borderColor: "#e5b025" },
+                      },
+                    }}
+                  >
                     {website && (
-                      <a
-                        href={website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button w="100%">Visit property website</Button>
-                      </a>
+                      <Button asChild data-primary="">
+                        <a
+                          href={website}
+                          onClick={() =>
+                            trackPropertyEvent(
+                              property.slug,
+                              "property-website-clicks",
+                            )
+                          }
+                          onAuxClick={(event) => {
+                            if (event.button === 1)
+                              trackPropertyEvent(
+                                property.slug,
+                                "property-website-clicks",
+                              );
+                          }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Visit property website
+                        </a>
+                      </Button>
                     )}
                     {agencyWebsite && (
-                      <a
-                        href={agencyWebsite}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button variant="outline" w="100%">
+                      <Button asChild variant="outline">
+                        <a
+                          href={agencyWebsite}
+                          onClick={() =>
+                            trackPropertyEvent(
+                              property.slug,
+                              "agency-website-clicks",
+                            )
+                          }
+                          onAuxClick={(event) => {
+                            if (event.button === 1)
+                              trackPropertyEvent(
+                                property.slug,
+                                "agency-website-clicks",
+                              );
+                          }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           Visit rental agency website
-                        </Button>
-                      </a>
+                        </a>
+                      </Button>
                     )}
-                    {property.agency?.phone &&
-                      agencyPhoneDigits !== propertyPhoneDigits && (
-                        <Text>
-                          Agency phone:{" "}
-                          <a href={phoneHref(property.agency.phone)}>
-                            {formatPhoneNumber(property.agency.phone)}
-                          </a>
-                        </Text>
-                      )}
-                    {property.phone && (
+                    {contactPhone && (
                       <Text>
-                        Phone:{" "}
-                        <a href={phoneHref(property.phone)}>
-                          {formatPhoneNumber(property.phone)}
+                        {propertyPhone ? "Phone" : "Agency phone"}:{" "}
+                        <a
+                          href={phoneHref(contactPhone)}
+                          onClick={() =>
+                            trackPropertyEvent(property.slug, "phone-taps")
+                          }
+                        >
+                          {formatPhoneNumber(contactPhone)}
                         </a>
                       </Text>
                     )}
-                    {hasCoordinates && (
+                    <FavoriteButton slug={property.slug} />
+                    <Button asChild variant="outline">
                       <NextLink
-                        href={`/map?property=${encodeURIComponent(property.slug)}`}
+                        href={`/compare?properties=${encodeURIComponent(property.slug)}`}
                       >
-                        <Button variant="outline" w="100%">
-                          View on map
-                        </Button>
+                        Compare apartments
                       </NextLink>
+                    </Button>
+                    {hasCoordinates && (
+                      <Button asChild variant="outline">
+                        <NextLink
+                          href={`/map?property=${encodeURIComponent(property.slug)}`}
+                        >
+                          View on map
+                        </NextLink>
+                      </Button>
                     )}
                     {profile?.role !== "property_manager" && (
-                      <NextLink
-                        href={`/submit?property=${encodeURIComponent(property.slug)}`}
-                      >
-                        <Button variant="outline" w="100%">
+                      <Button asChild variant="outline">
+                        <NextLink
+                          href={`/submit?property=${encodeURIComponent(property.slug)}`}
+                        >
                           Write a review
-                        </Button>
-                      </NextLink>
+                        </NextLink>
+                      </Button>
+                    )}
+                    {editHref && (
+                      <Button asChild variant="outline">
+                        <NextLink href={editHref}>Edit property</NextLink>
+                      </Button>
                     )}
                   </Stack>
                   {busRouteNames.length > 0 && (
@@ -378,6 +388,62 @@ export default function PropertyPage({
                   )}
                 </Box>
               </Grid>
+              <Stack
+                gap={7}
+                mt={8}
+                pt={7}
+                borderTopWidth="1px"
+                borderColor="var(--site-border)"
+              >
+                <Box>
+                  <Heading as="h2" size="lg" mb={4}>
+                    Floor plans and pricing
+                  </Heading>
+                  {property.floor_plans.length ? (
+                    <SimpleGrid columns={{ base: 1, lg: 2 }} gap={4}>
+                      {property.floor_plans.map((plan) => (
+                        <Box
+                          key={plan.id}
+                          p={5}
+                          bg="var(--site-surface)"
+                          borderWidth="1px"
+                          borderColor="var(--site-border)"
+                          borderRadius="lg"
+                        >
+                          <Heading as="h3" size="md">
+                            {plan.name}
+                          </Heading>
+                          <Text my={2}>
+                            {plan.bedrooms === 0
+                              ? "Studio"
+                              : `${plan.bedrooms} ${plan.bedrooms === 1 ? "bed" : "beds"}`}{" "}
+                            · {plan.bathrooms}{" "}
+                            {plan.bathrooms === 1 ? "bath" : "baths"}
+                            {plan.square_feet
+                              ? ` · ${plan.square_feet.toLocaleString()} sq ft`
+                              : ""}
+                          </Text>
+                          <Text fontWeight="bold">{planRent(plan)}</Text>
+                          {plan.description && (
+                            <Text mt={3} whiteSpace="pre-wrap">
+                              {plan.description}
+                            </Text>
+                          )}
+                        </Box>
+                      ))}
+                    </SimpleGrid>
+                  ) : (
+                    <Text>
+                      Floor plans and pricing have not been added yet.
+                    </Text>
+                  )}
+                </Box>
+                <CostCalculator
+                  key={`cost-${property.slug}`}
+                  initialRent={startingRent}
+                />
+                <PropertyReviews key={property.slug} slug={property.slug} />
+              </Stack>
             </>
           )}
         </Container>

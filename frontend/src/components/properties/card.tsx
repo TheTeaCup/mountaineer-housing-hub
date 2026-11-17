@@ -5,7 +5,18 @@ import NextLink from "next/link";
 import FavoriteButton from "./favorite-button";
 import PropertyPhoto from "./photo";
 
-export default function PropertiesCard({ property }: { property: Property }) {
+const reviewDate = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeZone: "America/New_York",
+});
+
+export default function PropertiesCard({
+  property,
+  sponsored = false,
+}: {
+  property: Property;
+  sponsored?: boolean;
+}) {
   const prices = rentSummary(property.floor_plans);
   return (
     <Box
@@ -22,6 +33,23 @@ export default function PropertiesCard({ property }: { property: Property }) {
       <Box position="absolute" top={2} right={2} zIndex={1}>
         <FavoriteButton slug={property.slug} iconOnly onImage />
       </Box>
+      {sponsored && (
+        <Text
+          position="absolute"
+          top={3}
+          left={3}
+          zIndex={1}
+          px={2}
+          py={1}
+          borderRadius="md"
+          bg="var(--site-surface)"
+          color="var(--site-heading)"
+          fontSize="xs"
+          fontWeight="bold"
+        >
+          Sponsored
+        </Text>
+      )}
       <PropertyPhoto
         key={property.photos[0]?.image_url || property.slug}
         src={property.photos[0]?.image_url}
@@ -58,6 +86,16 @@ export default function PropertiesCard({ property }: { property: Property }) {
             ? `${property.average_rating.toFixed(1)}/5 · ${property.review_count} published ${property.review_count === 1 ? "review" : "reviews"}`
             : "No published reviews yet"}
         </Text>
+        {property.latest_review && (
+          <Stack gap={1} p={3} bg="var(--site-muted-surface)" borderRadius="md">
+            <Text as="blockquote" lineClamp={3} fontSize="sm">
+              {property.latest_review.excerpt}
+            </Text>
+            <Text fontSize="xs" color="var(--site-muted)">
+              {reviewDate.format(new Date(property.latest_review.date))}
+            </Text>
+          </Stack>
+        )}
         <Box mt="auto" pt={2}>
           <Button
             asChild

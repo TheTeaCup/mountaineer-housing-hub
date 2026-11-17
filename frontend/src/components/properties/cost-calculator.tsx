@@ -16,10 +16,10 @@ const costs = [
   { id: "water", label: "Water and sewer per month" },
   { id: "internet", label: "Internet per month" },
   { id: "other", label: "Other monthly fees" },
-  { id: "parking", label: "Parking fee" },
 ] as const;
 
 type Cost = (typeof costs)[number]["id"];
+type ParkingBilling = "included" | "monthly" | "once";
 
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -36,13 +36,17 @@ export default function CostCalculator({
       ? {}
       : { rent: Math.max(0, Math.round(initialRent * 100)) },
   );
-  const [parkingIsMonthly, setParkingIsMonthly] = useState(true);
-  const recurring = costs.reduce(
-    (total, { id }) =>
-      total + (id === "parking" && !parkingIsMonthly ? 0 : (amounts[id] ?? 0)),
-    0,
-  );
-  const oneTime = parkingIsMonthly ? 0 : (amounts.parking ?? 0);
+  const [parkingBilling, setParkingBilling] =
+    useState<ParkingBilling>("included");
+  const [parking, setParking] = useState("");
+  const parkingAmount = Math.round(Number(parking) * 100);
+  const parkingCents = Number.isFinite(parkingAmount)
+    ? Math.max(0, parkingAmount)
+    : 0;
+  const recurring =
+    costs.reduce((total, { id }) => total + (amounts[id] ?? 0), 0) +
+    (parkingBilling === "monthly" ? parkingCents : 0);
+  const oneTime = parkingBilling === "once" ? parkingCents : 0;
 
   return (
     <Box
@@ -88,17 +92,32 @@ export default function CostCalculator({
           <Field.Label>Parking billing</Field.Label>
           <NativeSelect.Root>
             <NativeSelect.Field
-              value={parkingIsMonthly ? "monthly" : "once"}
+              value={parkingBilling}
               onChange={(event) =>
-                setParkingIsMonthly(event.target.value === "monthly")
+                setParkingBilling(event.target.value as ParkingBilling)
               }
             >
+              <option value="included">Included / no fee</option>
               <option value="monthly">Monthly</option>
               <option value="once">One time</option>
             </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
         </Field.Root>
+        {parkingBilling !== "included" && (
+          <Field.Root>
+            <Field.Label>Parking fee</Field.Label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              value={parking}
+              onChange={(event) => setParking(event.currentTarget.value)}
+            />
+          </Field.Root>
+        )}
       </SimpleGrid>
       <Stack
         role="status"

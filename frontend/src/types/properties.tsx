@@ -30,6 +30,7 @@ export interface Property {
   } | null;
   review_count: number;
   average_rating: number | null;
+  latest_review?: { date: string; excerpt: string };
   floor_plans: FloorPlan[];
   photos: { image_url: string; alt_text: string | null }[];
 }

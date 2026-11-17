@@ -22,9 +22,14 @@ const PAGE_SIZE = 12;
 export default function PropertiesList() {
   const router = useRouter();
   const query = typeof router.query.q === "string" ? router.query.q : "";
+  const onAppalCart = router.query.appalcart === "1";
   const [input, setInput] = useState("");
   const [page, setPage] = useState(1);
-  const { properties, loading, error, retry } = useProperties(query, 500);
+  const { properties, loading, error, retry } = useProperties(
+    query,
+    500,
+    onAppalCart ? "appalcart" : undefined,
+  );
   const currentPage = Math.min(
     page,
     Math.max(1, Math.ceil(properties.length / PAGE_SIZE)),
@@ -56,9 +61,13 @@ export default function PropertiesList() {
             onSubmit={(e) => {
               e.preventDefault();
               setPage(1);
-              void router.push(
-                `/properties${input.trim() ? `?q=${encodeURIComponent(input.trim())}` : ""}`,
-              );
+              void router.push({
+                pathname: "/properties",
+                query: {
+                  ...(input.trim() ? { q: input.trim() } : {}),
+                  ...(onAppalCart ? { appalcart: "1" } : {}),
+                },
+              });
             }}
           >
             <Input
@@ -69,6 +78,21 @@ export default function PropertiesList() {
             />
             <Button type="submit">Search</Button>
           </Flex>
+          {onAppalCart && (
+            <Flex gap={4} mb={5} align="center">
+              <Text>On AppalCART</Text>
+              <Button asChild variant="outline" onClick={() => setPage(1)}>
+                <NextLink
+                  href={{
+                    pathname: "/properties",
+                    query: query ? { q: query } : {},
+                  }}
+                >
+                  Remove filter
+                </NextLink>
+              </Button>
+            </Flex>
+          )}
           {query && (
             <Flex gap={4} mb={5} align="center">
               <Text>Results for “{query}”</Text>
@@ -77,7 +101,9 @@ export default function PropertiesList() {
                 onClick={() => {
                   setInput("");
                   setPage(1);
-                  void router.push("/properties");
+                  void router.push(
+                    onAppalCart ? "/properties?appalcart=1" : "/properties",
+                  );
                 }}
               >
                 Clear search
@@ -95,7 +121,7 @@ export default function PropertiesList() {
             </Box>
           ) : !properties.length ? (
             <Text>
-              {query
+              {query || onAppalCart
                 ? "No properties match your search."
                 : "No properties have been published yet."}
             </Text>

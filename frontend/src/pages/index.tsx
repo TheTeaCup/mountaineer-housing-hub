@@ -2,6 +2,7 @@ import PropertiesCard from "@/components/properties/card";
 import SEO from "@/components/seo";
 import { PropertyGridSkeleton } from "@/components/ui/page-skeletons";
 import { useProperties } from "@/hooks/use-properties";
+import type { Property } from "@/types/properties";
 import {
   Box,
   Button,
@@ -15,12 +16,55 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useState } from "react";
+
+function PropertyRow({
+  title,
+  properties,
+  action,
+  status,
+  sponsored = false,
+}: {
+  title: string;
+  properties: Property[];
+  action?: ReactNode;
+  status?: ReactNode;
+  sponsored?: boolean;
+}) {
+  return (
+    <Box as="section" mb={9}>
+      <Flex align="baseline" justify="space-between" wrap="wrap" gap={3} mb={5}>
+        <Heading
+          as="h2"
+          fontSize={{ base: "1.5rem", md: "1.8rem" }}
+          color="var(--site-heading)"
+        >
+          {title}
+        </Heading>
+        {action}
+      </Flex>
+      {status ?? (
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
+          {properties.map((property) => (
+            <PropertiesCard
+              key={property.slug}
+              property={property}
+              sponsored={sponsored}
+            />
+          ))}
+        </SimpleGrid>
+      )}
+    </Box>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const { properties, loading, error, retry } = useProperties("", 6, true);
+  const recent = useProperties("", 3, "recently-reviewed");
+  const top = useProperties("", 3, "top-rated");
+  const sponsored = useProperties("", 3, "sponsored");
 
   const handleSearch = () => {
     const query = searchQuery.trim();
@@ -93,6 +137,7 @@ export default function Home() {
                   _focus={{
                     boxShadow: "none",
                   }}
+                  aria-label="Search by property name, rental agency, or address"
                   placeholder="Search by property name, rental agency, or address…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -112,54 +157,76 @@ export default function Home() {
                   Search
                 </Button>
               </Flex>
+              <Flex
+                as="nav"
+                aria-label="Property shortcuts"
+                wrap="wrap"
+                justify="center"
+                gap={2}
+              >
+                {[
+                  { href: "/properties?appalcart=1", label: "On AppalCART" },
+                  { href: "/map", label: "Browse map" },
+                  { href: "/properties", label: "All properties" },
+                ].map(({ href, label }) => (
+                  <Button
+                    key={href}
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    color="white"
+                    borderColor="whiteAlpha.700"
+                    bg="blackAlpha.400"
+                    _hover={{ bg: "whiteAlpha.300" }}
+                  >
+                    <NextLink href={href}>{label}</NextLink>
+                  </Button>
+                ))}
+              </Flex>
             </VStack>
           </Container>
         </Box>
 
-        {/* Listings */}
-        <Container maxW="1200px" py={8} px={{ base: 4, md: 6 }}>
-          <Flex align="center" justify="space-between" gap={4} mb={6}>
-            <Heading
-              as="h2"
-              display="inline-block"
-              fontSize={{ base: "1.5rem", md: "1.8rem" }}
-              color="var(--site-heading)"
-              pb={1}
-              borderBottom="2px solid"
-              borderColor="#ffc72c"
-            >
-              Explore Student Properties
-            </Heading>
-
-            <NextLink href="/properties" style={{ textDecoration: "none" }}>
-              <Text
+        <Container maxW="1200px" py={9} px={{ base: 4, md: 6 }}>
+          <PropertyRow
+            title="Recently reviewed"
+            properties={recent.properties}
+            action={
+              <Button
+                asChild
+                variant="outline"
                 color="var(--site-accent-fg)"
-                fontWeight="700"
-                whiteSpace="nowrap"
-                _hover={{ color: "var(--site-heading)" }}
+                borderColor="currentColor"
               >
-                View all properties
-              </Text>
-            </NextLink>
-          </Flex>
-
-          {loading ? (
-            <PropertyGridSkeleton count={6} />
-          ) : error ? (
-            <Box role="alert">
-              <Text mb={3}>{error}</Text>
-              <Button variant="outline" onClick={retry}>
-                Try again
+                <NextLink href="/submit">Write a review</NextLink>
               </Button>
-            </Box>
-          ) : !properties.length ? (
-            <Text>No properties have been published yet. Check back soon.</Text>
-          ) : (
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={8}>
-              {properties.map((property) => (
-                <PropertiesCard key={property.slug} property={property} />
-              ))}
-            </SimpleGrid>
+            }
+            status={
+              recent.loading ? (
+                <PropertyGridSkeleton count={3} />
+              ) : recent.error ? (
+                <Box role="alert">
+                  <Text mb={3}>{recent.error}</Text>
+                  <Button variant="outline" onClick={recent.retry}>
+                    Try again
+                  </Button>
+                </Box>
+              ) : !recent.properties.length ? (
+                <Text color="var(--site-muted)">
+                  No student reviews have been published yet.
+                </Text>
+              ) : undefined
+            }
+          />
+          {top.properties.length >= 2 && (
+            <PropertyRow title="Top rated" properties={top.properties} />
+          )}
+          {sponsored.properties.length > 0 && (
+            <PropertyRow
+              title="Sponsored properties"
+              properties={sponsored.properties}
+              sponsored
+            />
           )}
         </Container>
       </Box>
