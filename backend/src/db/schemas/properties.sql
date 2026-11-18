@@ -24,6 +24,7 @@ CREATE TABLE properties (
   latitude DECIMAL(9, 6) NULL,
   longitude DECIMAL(9, 6) NULL,
   bus_route_ids JSON NULL,
+  parking_type ENUM ('free', 'monthly', 'one_time') NULL,
   website_url VARCHAR(2048) NULL,
   phone VARCHAR(32) NULL,
   status ENUM ('draft', 'published', 'archived') NOT NULL DEFAULT 'draft',

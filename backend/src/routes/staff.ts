@@ -662,7 +662,7 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.get("/properties/:id", async (req, res) => {
     const rows = await deps.query<{ id: number } & Record<string, unknown>>(
-      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone, bus_route_ids FROM properties WHERE id = ?",
+      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone, bus_route_ids, parking_type FROM properties WHERE id = ?",
       [req.params.id],
     );
     if (!rows.length) {
@@ -1044,6 +1044,16 @@ export function createStaffRouter(deps: AccountDependencies) {
       return;
     }
     const routeIds: unknown = req.body.bus_route_ids;
+    const parking = req.body.parking_type;
+    if (
+      parking !== undefined &&
+      parking !== null &&
+      parking !== "" &&
+      !["free", "monthly", "one_time"].includes(parking)
+    ) {
+      res.status(400).json({ message: "Choose a valid parking type." });
+      return;
+    }
     let busRoutes: string | null = null;
     if (routeIds !== undefined) {
       if (!res.locals.isStaff) {
@@ -1067,7 +1077,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     let result;
     try {
       result = await deps.execute(
-        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ?, bus_route_ids = COALESCE(?, bus_route_ids) WHERE id = ?",
+        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ?, bus_route_ids = COALESCE(?, bus_route_ids), parking_type = CASE WHEN ? THEN ? ELSE parking_type END WHERE id = ?",
         [
           slug,
           property.name,
@@ -1084,6 +1094,8 @@ export function createStaffRouter(deps: AccountDependencies) {
           longitude,
           phone,
           busRoutes,
+          parking !== undefined,
+          parking || null,
           req.params.id,
         ],
       );

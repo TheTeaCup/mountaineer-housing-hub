@@ -15,6 +15,7 @@ export interface PropertyRow {
   latitude: number | string | null;
   longitude: number | string | null;
   bus_route_ids: string[] | null;
+  parking_type: "free" | "monthly" | "one_time" | null;
   website_url: string | null;
   phone: string | null;
   agency_id: number | null;
@@ -70,6 +71,7 @@ export function publicProperty(
     latitude: numberOrNull(row.latitude),
     longitude: numberOrNull(row.longitude),
     bus_route_ids: row.bus_route_ids ?? [],
+    parking_type: row.parking_type,
     website_url: row.website_url,
     phone: row.phone,
     agency:
@@ -109,7 +111,7 @@ export function createPropertiesRouter(
   const router = Router();
   const select = `SELECT p.id, p.name, p.slug, p.property_type, p.description,
     p.address_line1, p.address_line2, p.city, p.state, p.postal_code,
-    p.latitude, p.longitude, p.bus_route_ids, p.website_url, p.phone,
+    p.latitude, p.longitude, p.bus_route_ids, p.parking_type, p.website_url, p.phone,
     p.agency_id, a.name AS agency_name, a.slug AS agency_slug, a.website_url AS agency_website, a.phone AS agency_phone,
     COALESCE(r.review_count, 0) AS review_count, r.average_rating
     FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id
@@ -160,6 +162,76 @@ export function createPropertiesRouter(
     let order = "p.updated_at DESC, p.id DESC";
     if (req.query.appalcart === "1") {
       selection += " AND JSON_LENGTH(p.bus_route_ids) > 0";
+    }
+    const numericFilter = (key: string, max = Number.MAX_SAFE_INTEGER) => {
+      const value = req.query[key];
+      if (value === undefined || value === "") return undefined;
+      if (
+        typeof value !== "string" ||
+        !Number.isFinite(Number(value)) ||
+        Number(value) < 0 ||
+        Number(value) > max
+      ) {
+        throw new Error(`Invalid ${key} filter.`);
+      }
+      return Number(value);
+    };
+    try {
+      const minRent = numericFilter("minRent");
+      const maxRent = numericFilter("maxRent");
+      const minReviews = numericFilter("minReviews");
+      const minRating = numericFilter("minRating", 5);
+      const basis = req.query.rentBasis;
+      const parking = req.query.parking;
+      if (parking !== undefined) {
+        if (
+          typeof parking !== "string" ||
+          !["free", "monthly", "one_time"].includes(parking)
+        ) {
+          throw new Error("Invalid parking filter.");
+        }
+        selection += " AND p.parking_type = ?";
+        params.push(parking);
+      }
+      if (
+        basis !== undefined &&
+        basis !== "per_unit" &&
+        basis !== "per_bedroom"
+      ) {
+        throw new Error("Invalid rent basis filter.");
+      }
+      if (minRent !== undefined && maxRent !== undefined && minRent > maxRent) {
+        throw new Error("Minimum rent must not exceed maximum rent.");
+      }
+      if (minRent !== undefined || maxRent !== undefined) {
+        // One layout must match all rent conditions. Unknown rents do not qualify.
+        selection +=
+          " AND EXISTS (SELECT 1 FROM floor_plans fp WHERE fp.property_id = p.id AND fp.rent_min IS NOT NULL";
+        if (basis) {
+          selection += " AND fp.rent_basis = ?";
+          params.push(basis);
+        }
+        if (minRent !== undefined) {
+          selection += " AND COALESCE(fp.rent_max, fp.rent_min) >= ?";
+          params.push(minRent);
+        }
+        if (maxRent !== undefined) {
+          selection += " AND fp.rent_min <= ?";
+          params.push(maxRent);
+        }
+        selection += ")";
+      }
+      if (minReviews !== undefined) {
+        selection += " AND COALESCE(r.review_count, 0) >= ?";
+        params.push(minReviews);
+      }
+      if (minRating !== undefined) {
+        selection += " AND r.average_rating >= ?";
+        params.push(minRating);
+      }
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+      return;
     }
     if (req.query.sort === "recently-reviewed") {
       const rows = await query<

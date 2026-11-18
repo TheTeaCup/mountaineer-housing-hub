@@ -42,9 +42,23 @@ version pair. Before deploying these changes to an existing database, run
 table automatically. Update the version constants in
 `backend/src/routes/submission-terms.ts` whenever either published policy changes.
 
-The home page requests six random published properties that have at least one
-photo on each load and selects a random photo for each card. Other property
-lists keep their usual ordering.
+The home page requests six random published properties on each load, with a
+Shuffle places button to refresh the selection. Listings without photos or
+reviews remain eligible; cards select a random photo when available. Recently
+reviewed, top rated, and sponsored sections appear separately.
+
+Search and property browsing support monthly rent ranges (per bedroom or whole
+unit), listed AppalCART routes, minimum published review counts, and minimum
+average ratings. Filters persist in the URL and apply before the result limit.
+Price ranges match overlapping advertised floor plan ranges and exclude unknown
+prices. Route assignments do not guarantee a nearby stop or walking distance.
+Deploy frontend and backend together for these filters.
+
+Parking can be recorded as free, a monthly fee, or a one-time fee in the property
+editor and filtered in search. Unverified parking remains blank and does not match
+a specific parking filter. Before deploying, apply
+`backend/src/db/migrations/013_property_parking.sql` to existing databases; new
+database setup includes the column.
 
 `/sitemap.xml` includes public pages, all published properties, and agencies with
 published properties. `/robots.txt` advertises the sitemap. The sitemap fetches
