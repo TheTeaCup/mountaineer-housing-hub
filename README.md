@@ -60,6 +60,15 @@ a specific parking filter. Before deploying, apply
 `backend/src/db/migrations/013_property_parking.sql` to existing databases; new
 database setup includes the column.
 
+New accounts see a welcome guide explaining their generated public profile,
+staff access to account email, and suggested next steps. Completion is stored
+per account and the guide can be reopened in My Account. Before deploying this
+feature, run `npm run db:onboarding` from `backend` to apply
+`backend/src/db/migrations/014_account_onboarding.sql` to existing
+databases, then deploy the backend and frontend together. The migration marks
+existing profiles as complete so returning users are not interrupted. New
+database setup includes the completion column.
+
 `/sitemap.xml` includes public pages, all published properties, and agencies with
 published properties. `/robots.txt` advertises the sitemap. The sitemap fetches
 the backend's `/sitemap` catalog and can be cached for one hour (with up to one

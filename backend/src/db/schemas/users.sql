@@ -21,6 +21,7 @@ CREATE TABLE user_profiles (
   avatar_variant ENUM ('beam', 'marble', 'bauhaus', 'ring') NOT NULL DEFAULT 'beam',
   avatar_palette ENUM ('gold', 'forest', 'ocean') NOT NULL DEFAULT 'gold',
   avatar_seed VARCHAR(36) NULL,
+  onboarding_completed_at TIMESTAMP(3) NULL,
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   CONSTRAINT fk_profile_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,

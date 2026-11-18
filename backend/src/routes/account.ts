@@ -68,8 +68,9 @@ export function createAccountRouter(deps: AccountDependencies) {
       avatar_variant: string;
       avatar_palette: string;
       avatar_seed: string | null;
+      onboarding_completed_at: string | null;
     }>(
-      "SELECT u.role, p.avatar_variant, p.avatar_palette, p.avatar_seed FROM users u JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ?",
+      "SELECT u.role, p.avatar_variant, p.avatar_palette, p.avatar_seed, p.onboarding_completed_at FROM users u JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ?",
       [res.locals.userId],
     );
     res.json({
@@ -78,7 +79,16 @@ export function createAccountRouter(deps: AccountDependencies) {
       avatar_variant: users[0]?.avatar_variant ?? "beam",
       avatar_palette: users[0]?.avatar_palette ?? "gold",
       avatar_seed: users[0]?.avatar_seed ?? null,
+      onboarding_completed_at: users[0]?.onboarding_completed_at ?? null,
     });
+  });
+  router.post("/onboarding/complete", async (_req, res) => {
+    await deps.ensureProfile(res.locals.userId);
+    await deps.execute(
+      "UPDATE user_profiles SET onboarding_completed_at = COALESCE(onboarding_completed_at, CURRENT_TIMESTAMP(3)) WHERE user_id = ?",
+      [res.locals.userId],
+    );
+    res.json({ completed: true });
   });
   router.patch("/", async (req, res) => {
     const { avatar_variant, avatar_palette } = req.body ?? {};
