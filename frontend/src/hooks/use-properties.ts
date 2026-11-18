@@ -1,10 +1,31 @@
 import type { Property } from "@/types/properties";
-import { fetchProperties, type PropertyMode } from "@/utils/api/properties";
+import {
+  fetchProperties,
+  type PropertyFilters,
+  type PropertyMode,
+} from "@/utils/api/properties";
 import { useEffect, useState } from "react";
 const emptyProperties: Property[] = [];
 
-export function useProperties(query = "", limit = 100, mode?: PropertyMode) {
-  const key = `${mode}:${limit}:${query}`;
+export function useProperties(
+  query = "",
+  limit = 100,
+  mode?: PropertyMode,
+  filters: PropertyFilters = {},
+) {
+  const { minRent, maxRent, rentBasis, minReviews, minRating, parking } =
+    filters;
+  const key = JSON.stringify([
+    mode,
+    limit,
+    query,
+    minRent,
+    maxRent,
+    rentBasis,
+    minReviews,
+    minRating,
+    parking,
+  ]);
   const [result, setResult] = useState<{
     key: string;
     data: Property[];
@@ -14,7 +35,14 @@ export function useProperties(query = "", limit = 100, mode?: PropertyMode) {
   const requestKey = `${key}:${revision}`;
   useEffect(() => {
     const controller = new AbortController();
-    fetchProperties(query, limit, controller.signal, mode)
+    fetchProperties(query, limit, controller.signal, mode, {
+      minRent,
+      maxRent,
+      rentBasis,
+      minReviews,
+      minRating,
+      parking,
+    })
       .then((data) => {
         // Pick once per load so typing and other renders keep the same pictures.
         if (mode === "random") {
@@ -37,7 +65,18 @@ export function useProperties(query = "", limit = 100, mode?: PropertyMode) {
           setResult({ key: requestKey, data: [], error: err.message });
       });
     return () => controller.abort();
-  }, [query, limit, mode, requestKey]);
+  }, [
+    query,
+    limit,
+    mode,
+    requestKey,
+    minRent,
+    maxRent,
+    rentBasis,
+    minReviews,
+    minRating,
+    parking,
+  ]);
   return {
     properties: result.key === requestKey ? result.data : emptyProperties,
     loading: result.key !== requestKey,

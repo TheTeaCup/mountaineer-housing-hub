@@ -6,6 +6,8 @@ import {
   Button,
   Container,
   Field,
+  Flex,
+  Grid,
   Heading,
   Input,
   Stack,
@@ -16,6 +18,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { FaGoogle } from "react-icons/fa";
+import { LuHeart, LuMapPin, LuMessageSquare } from "react-icons/lu";
 
 export default function AuthLogin() {
   const router = useRouter();
@@ -32,9 +35,7 @@ export default function AuthLogin() {
     try {
       window.location.assign(signInWithGoogle());
     } catch {
-      setError(
-        "Could not start Google sign-in. Please try again or check that the API is running.",
-      );
+      setError("Could not start Google sign-in. Please try again in a moment.");
       setPending(false);
     }
   };
@@ -49,28 +50,108 @@ export default function AuthLogin() {
         color="var(--site-fg)"
         fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
       >
-        <Container maxW="500px" py={{ base: 12, md: 20 }}>
-          <Box
+        <Container maxW="1000px" py={{ base: 8, md: 14 }}>
+          <Grid
+            templateColumns={{ base: "1fr", md: "0.9fr 1.1fr" }}
             bg="var(--site-surface)"
             borderWidth="1px"
             borderColor="var(--site-border)"
-            borderRadius="xl"
-            p={{ base: 6, md: 8 }}
-            boxShadow="sm"
+            borderRadius="2xl"
+            overflow="hidden"
+            boxShadow="0 12px 40px rgb(0 0 0 / 12%)"
           >
-            <VStack gap={6} align="stretch">
-              <Box textAlign="center">
-                <Heading as="h1" size="xl" color="var(--site-heading)" mb={3}>
-                  Welcome
+            <Flex
+              as="aside"
+              display={{ base: "none", md: "flex" }}
+              direction="column"
+              justify="space-between"
+              p={9}
+              color="white"
+              bgImage="linear-gradient(180deg, rgba(17,17,17,0.5), rgba(17,17,17,0.92)), url('/assets/background.jpeg')"
+              bgSize="cover"
+              backgroundPosition="center"
+            >
+              <Box>
+                <Text
+                  fontSize="xs"
+                  fontWeight="bold"
+                  letterSpacing="0.14em"
+                  color="#ffc72c"
+                  mb={5}
+                >
+                  AT HOME IN BOONE
+                </Text>
+                <Heading as="h2" fontSize="2.25rem" lineHeight="1.15" mb={4}>
+                  Find a place.
+                  <br />
+                  Make it home.
+                </Heading>
+                <Text color="whiteAlpha.900" lineHeight="1.7">
+                  A little local knowledge goes a long way. Find your next home
+                  with real student experiences.
+                </Text>
+              </Box>
+              <Stack gap={5} mt={12} fontSize="sm">
+                <Flex gap={3} align="center">
+                  <LuMapPin color="#ffc72c" size={20} />
+                  Explore housing around Boone
+                </Flex>
+                <Flex gap={3} align="center">
+                  <LuHeart color="#ffc72c" size={20} />
+                  Keep your favorite places together
+                </Flex>
+                <Flex gap={3} align="center">
+                  <LuMessageSquare color="#ffc72c" size={20} />
+                  Share your experience with students
+                </Flex>
+              </Stack>
+            </Flex>
+            <VStack
+              gap={6}
+              align="stretch"
+              p={{ base: 6, md: 9 }}
+              minW={0}
+              css={{
+                "& input": {
+                  background: "var(--site-control)",
+                  borderColor: "var(--site-border)",
+                  borderRadius: "10px",
+                  minHeight: "48px",
+                },
+                "& input:focus-visible": {
+                  outline: "2px solid var(--site-accent-fg)",
+                  outlineOffset: "2px",
+                },
+              }}
+            >
+              <Box>
+                <Text
+                  color="var(--site-accent-fg)"
+                  fontSize="xs"
+                  fontWeight="bold"
+                  letterSpacing="0.1em"
+                  mb={2}
+                >
+                  MOUNTAINEER HOUSING HUB
+                </Text>
+                <Heading as="h1" size="2xl" color="var(--site-heading)" mb={3}>
+                  Welcome to the Hub
                 </Heading>
 
                 <Text color="var(--site-muted)" fontSize="md">
-                  Sign in to continue to Mountaineer Housing Hub.
+                  {external
+                    ? "Sign in to manage your properties and account."
+                    : "Your Boone housing search starts here."}
                 </Text>
               </Box>
 
               {session ? (
-                <Text role="status">Signed in as {session.user.email}.</Text>
+                <Stack gap={4}>
+                  <Text role="status">Signed in as {session.user.email}.</Text>
+                  <Button asChild>
+                    <NextLink href="/account">Go to your account</NextLink>
+                  </Button>
+                </Stack>
               ) : external ? (
                 <Stack gap={4}>
                   <Heading as="h2" size="md">
@@ -132,7 +213,7 @@ export default function AuthLogin() {
                   </form>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     disabled={pending}
                     onClick={() => {
                       setExternal(false);
@@ -147,13 +228,17 @@ export default function AuthLogin() {
                   <Button
                     size="lg"
                     width="100%"
-                    bg="var(--site-surface)"
-                    color="var(--site-fg)"
+                    bg="#ffc72c"
+                    color="#111111"
                     borderWidth="1px"
-                    borderColor="var(--site-border)"
+                    borderColor="#ffc72c"
+                    whiteSpace="normal"
+                    height="auto"
+                    minH="52px"
+                    py={3}
                     _hover={{
-                      bg: "var(--site-muted-surface)",
-                      borderColor: "#c6c6c6",
+                      bg: "#e5b324",
+                      borderColor: "#e5b324",
                     }}
                     onClick={handleGoogleLogin}
                     loading={pending}
@@ -161,18 +246,19 @@ export default function AuthLogin() {
                     disabled={loading || pending}
                   >
                     <FaGoogle />
-                    Sign in with your App State Email
+                    Continue with App State Google
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
+                    minH="48px"
                     disabled={loading || pending}
                     onClick={() => {
                       setExternal(true);
                       setError("");
                     }}
                   >
-                    Agency or external login
+                    Agency &amp; external sign in
                   </Button>
                 </Stack>
               )}
@@ -186,6 +272,9 @@ export default function AuthLogin() {
 
               <Text
                 textAlign="center"
+                borderTopWidth="1px"
+                borderColor="var(--site-border)"
+                pt={5}
                 fontSize="sm"
                 color="var(--site-muted)"
                 lineHeight="1.6"
@@ -209,7 +298,7 @@ export default function AuthLogin() {
                 .
               </Text>
             </VStack>
-          </Box>
+          </Grid>
         </Container>
       </Box>
     </>

@@ -353,6 +353,27 @@ export default function PropertyPage({
                       </Button>
                     )}
                   </Stack>
+                  {property.parking_type && (
+                    <Box
+                      mt={5}
+                      pt={4}
+                      borderTopWidth="1px"
+                      borderColor="var(--site-border)"
+                    >
+                      <Heading as="h2" size="sm" mb={2}>
+                        Parking
+                      </Heading>
+                      <Text>
+                        {
+                          {
+                            free: "Free parking",
+                            monthly: "Monthly parking fee",
+                            one_time: "One-time parking fee",
+                          }[property.parking_type]
+                        }
+                      </Text>
+                    </Box>
+                  )}
                   {busRouteNames.length > 0 && (
                     <Box
                       mt={5}

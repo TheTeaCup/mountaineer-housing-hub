@@ -47,6 +47,7 @@ interface PropertyForm {
   longitude: string | number | null;
   phone: string | null;
   bus_route_ids?: string[] | null;
+  parking_type?: "free" | "monthly" | "one_time" | null;
   photos: StaffPropertyPhoto[];
   floor_plans: FloorPlan[];
 }
@@ -284,6 +285,8 @@ export default function EditProperty({
                           information: String(data.information || "") || null,
                           website: String(data.website || "") || null,
                           phone: String(data.phone || "") || null,
+                          parking_type: (data.parking_type ||
+                            null) as PropertyForm["parking_type"],
                           latitude: String(data.latitude || "") || null,
                           longitude: String(data.longitude || "") || null,
                           bus_route_ids: canEditBusRoutes
@@ -524,6 +527,26 @@ export default function EditProperty({
                       ))}
                     </SimpleGrid>
                   </Box>
+                )}
+                {!suggestion && (
+                  <Field.Root>
+                    <Field.Label>Parking</Field.Label>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        name="parking_type"
+                        defaultValue={property.parking_type || ""}
+                      >
+                        <option value="">Unknown / not verified</option>
+                        <option value="free">Free parking</option>
+                        <option value="monthly">Monthly fee</option>
+                        <option value="one_time">One-time fee</option>
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
+                    <Field.HelperText>
+                      Choose the verified parking arrangement for this property.
+                    </Field.HelperText>
+                  </Field.Root>
                 )}
                 {property.submission_kind !== "agency" && (
                   <Box

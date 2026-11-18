@@ -16,19 +16,37 @@ export function mapLocations(properties: Property[]) {
 export type PropertyMode =
   "random" | "recently-reviewed" | "top-rated" | "sponsored" | "appalcart";
 
+export interface PropertyFilters {
+  minRent?: string;
+  maxRent?: string;
+  rentBasis?: string;
+  minReviews?: string;
+  minRating?: string;
+  parking?: string;
+}
+
 export async function fetchProperties(
   query = "",
   limit = 100,
   signal?: AbortSignal,
   mode?: PropertyMode,
+  filters: PropertyFilters = {},
 ): Promise<Property[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
   if (mode === "appalcart") params.set("appalcart", "1");
   else if (mode) params.set("sort", mode);
-  if (mode === "random") params.set("photos", "required");
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
   const response = await fetch(`${API_URL}/properties?${params}`, {
-    signal,
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
     cache: "no-store",
+  }).catch(() => {
+    throw new Error(
+      "Properties are temporarily unavailable. Please try again.",
+    );
   });
   if (!response.ok)
     throw new Error(

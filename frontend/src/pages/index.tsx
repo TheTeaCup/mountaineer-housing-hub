@@ -62,6 +62,7 @@ function PropertyRow({
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const discover = useProperties("", 6, "random");
   const recent = useProperties("", 3, "recently-reviewed");
   const top = useProperties("", 3, "top-rated");
   const sponsored = useProperties("", 3, "sponsored");
@@ -188,6 +189,56 @@ export default function Home() {
         </Box>
 
         <Container maxW="1200px" py={9} px={{ base: 4, md: 6 }}>
+          <PropertyRow
+            title="Explore places to live"
+            properties={discover.properties}
+            action={
+              <Flex gap={3} wrap="wrap">
+                <Button
+                  variant="outline"
+                  borderWidth="1px"
+                  borderColor="var(--site-border)"
+                  bg="var(--site-surface)"
+                  color="var(--site-fg)"
+                  _hover={{
+                    bg: "var(--site-control-hover)",
+                    borderColor: "var(--site-accent-fg)",
+                  }}
+                  onClick={discover.retry}
+                  disabled={discover.loading}
+                >
+                  Shuffle places
+                </Button>
+                <Button
+                  asChild
+                  bg="#ffc72c"
+                  color="#111111"
+                  borderWidth="1px"
+                  borderColor="#ffc72c"
+                  fontWeight="semibold"
+                  _hover={{ bg: "#e5b324" }}
+                >
+                  <NextLink href="/properties">View all properties</NextLink>
+                </Button>
+              </Flex>
+            }
+            status={
+              discover.loading ? (
+                <PropertyGridSkeleton count={6} />
+              ) : discover.error ? (
+                <Box role="alert">
+                  <Text mb={3}>{discover.error}</Text>
+                  <Button variant="outline" onClick={discover.retry}>
+                    Try again
+                  </Button>
+                </Box>
+              ) : !discover.properties.length ? (
+                <Text color="var(--site-muted)">
+                  No properties have been published yet.
+                </Text>
+              ) : undefined
+            }
+          />
           <PropertyRow
             title="Recently reviewed"
             properties={recent.properties}

@@ -10,20 +10,26 @@
   --site-accent-fg: #725600;
   --site-success: #237a45;
   --site-success-bg: #e8f5e9;
+  --site-control: #f7f8fa;
+  --site-control-hover: #eef1f5;
+  --site-accent-soft: #fff4cc;
 }
 
 :root.dark {
   color-scheme: dark;
-  --site-bg: #121416;
-  --site-surface: #1e2227;
-  --site-muted-surface: #2b3037;
-  --site-fg: #e5e7eb;
-  --site-heading: #f9fafb;
-  --site-muted: #b6bdc7;
-  --site-border: #424952;
+  --site-bg: #262626;
+  --site-surface: #333333;
+  --site-muted-surface: #404040;
+  --site-fg: #e9e7e3;
+  --site-heading: #faf9f6;
+  --site-muted: #c8c5bf;
+  --site-border: #605e59;
   --site-accent-fg: #ffc72c;
   --site-success: #75d69a;
   --site-success-bg: #1c3728;
+  --site-control: #3c3c3b;
+  --site-control-hover: #494947;
+  --site-accent-soft: #49432e;
 }
 
 body {

@@ -22,7 +22,9 @@ export default function PropertiesCard({
     <Box
       position="relative"
       bg="var(--site-surface)"
-      borderRadius="8px"
+      borderRadius="xl"
+      borderWidth="1px"
+      borderColor="var(--site-border)"
       overflow="hidden"
       boxShadow="0 2px 8px rgba(0,0,0,0.1)"
       display="flex"
@@ -55,10 +57,27 @@ export default function PropertiesCard({
         src={property.photos[0]?.image_url}
         alt={property.photos[0]?.alt_text || `${property.name} exterior`}
       />
-      <Stack p={6} gap={3} flex="1">
+      <Box
+        px={6}
+        py={4}
+        borderBottomWidth="1px"
+        borderColor="var(--site-border)"
+        bg="var(--site-control)"
+      >
         <Heading as="h3" fontSize="1.25rem" color="var(--site-heading)">
           {property.name}
         </Heading>
+        <Text
+          mt={1}
+          fontSize="xs"
+          color="var(--site-muted)"
+          textTransform="uppercase"
+          letterSpacing="0.06em"
+        >
+          {propertyTypeLabel(property.property_type)}
+        </Text>
+      </Box>
+      <Stack px={6} pt={5} pb={6} gap={3} flex="1">
         {prices.length ? (
           prices.map((price) => (
             <Text key={price} color="var(--site-success)" fontWeight="bold">
@@ -68,18 +87,23 @@ export default function PropertiesCard({
         ) : (
           <Text color="var(--site-muted)">Contact property for pricing</Text>
         )}
-        <Text
-          fontSize="sm"
-          color="var(--site-muted)"
-          textTransform="capitalize"
-        >
-          {propertyTypeLabel(property.property_type)}
-        </Text>
         <Text fontSize="sm" color="var(--site-muted)">
           {property.address}
         </Text>
         {property.agency && (
           <Text fontSize="sm">Managed by {property.agency.name}</Text>
+        )}
+        {property.parking_type && (
+          <Text fontSize="sm" color="var(--site-muted)">
+            Parking:{" "}
+            {
+              {
+                free: "Free",
+                monthly: "Monthly fee",
+                one_time: "One-time fee",
+              }[property.parking_type]
+            }
+          </Text>
         )}
         <Text fontSize="sm" color="var(--site-muted)">
           {property.review_count && property.average_rating !== null
@@ -101,9 +125,13 @@ export default function PropertiesCard({
             asChild
             position="static"
             w="100%"
-            bg="#111111"
-            color="white"
-            _hover={{ bg: "#333333" }}
+            bg="var(--site-accent-soft)"
+            color="var(--site-accent-fg)"
+            borderWidth="1px"
+            borderColor="var(--site-accent-fg)"
+            borderRadius="lg"
+            fontWeight="semibold"
+            _hover={{ bg: "#ffc72c", color: "#111111" }}
             _after={{ content: '""', position: "absolute", inset: 0 }}
           >
             <NextLink
