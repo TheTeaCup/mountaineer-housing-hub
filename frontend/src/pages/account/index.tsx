@@ -8,6 +8,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import PaginationControls from "@/components/ui/pagination-controls";
 import ProfileCustomization from "@/components/ui/profile-customization";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
+import WelcomeGuide from "@/components/ui/welcome-guide";
 import { accountRequest, type MyReview } from "@/utils/api/account";
 import {
   Box,
@@ -358,7 +359,12 @@ export default function AccountPage() {
                   Account settings
                 </Heading>
                 <Text mb={4}>Private email: {session.user.email}</Text>
-                <ProfileCustomization />
+                <Box id="profile" scrollMarginTop="24px">
+                  <ProfileCustomization />
+                </Box>
+                <Box mt={5}>
+                  <WelcomeGuide replay />
+                </Box>
                 <Flex align="center" gap={3} mt={5}>
                   <Text>Appearance</Text>
                   <ColorModeButton />

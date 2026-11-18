@@ -63,7 +63,7 @@ export default function PropertyAssetsPage({
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="850px" py={10}>
           <NextLink href={assigned ? "/account" : "/staff/apartments"}>
-            ← {assigned ? "My account" : "Property submissions and listings"}
+            ← {assigned ? "My Account" : "Apartment Submissions"}
           </NextLink>
           <Heading as="h1" mt={5} mb={2}>
             {title}

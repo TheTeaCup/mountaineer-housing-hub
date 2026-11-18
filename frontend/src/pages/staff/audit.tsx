@@ -62,7 +62,7 @@ export default function StaffAuditPage() {
       <SEO title="Setup audit · Staff" noIndex />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1000px" py={10}>
-          <NextLink href="/staff">← Staff dashboard</NextLink>
+          <NextLink href="/staff">← Staff Dashboard</NextLink>
           <Heading as="h1" mt={5} mb={3}>
             Setup audit
           </Heading>

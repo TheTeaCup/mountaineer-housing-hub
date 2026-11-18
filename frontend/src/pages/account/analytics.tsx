@@ -1,5 +1,6 @@
 import SEO from "@/components/seo";
 import { useAuth } from "@/components/ui/auth-provider";
+import FormSelect from "@/components/ui/form-select";
 import SignInRequired from "@/components/ui/sign-in-required";
 import { accountRequest } from "@/utils/api/account";
 import {
@@ -8,7 +9,6 @@ import {
   Container,
   Flex,
   Heading,
-  NativeSelect,
   SimpleGrid,
   Stack,
   Table,
@@ -206,18 +206,18 @@ export default function AnalyticsPage() {
                   the contact number. Date ranges include today in UTC.
                 </Text>
               </Box>
-              <NativeSelect.Root width="auto" minW="160px">
-                <NativeSelect.Field
-                  aria-label="Date range"
+              <Box w={{ base: "100%", md: "190px" }} flexShrink={0}>
+                <FormSelect
+                  label="Date range"
                   value={days}
-                  onChange={(event) => setDays(event.currentTarget.value)}
-                >
-                  <option value="7">Last 7 days</option>
-                  <option value="30">Last 30 days</option>
-                  <option value="90">Last 90 days</option>
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
+                  onValueChange={setDays}
+                  options={[
+                    { value: "7", label: "Last 7 days" },
+                    { value: "30", label: "Last 30 days" },
+                    { value: "90", label: "Last 90 days" },
+                  ]}
+                />
+              </Box>
             </Flex>
             <AnalyticsReport key={`${session.user.id}-${days}`} days={days} />
           </Stack>

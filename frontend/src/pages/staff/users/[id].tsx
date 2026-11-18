@@ -4,6 +4,7 @@ import UserEditor, {
   type ManagedUser,
 } from "@/components/staff/user-editor";
 import { useAccount } from "@/components/ui/account-provider";
+import FormSelect from "@/components/ui/form-select";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest, accountRoleLabel } from "@/utils/api/account";
 import {
@@ -12,7 +13,6 @@ import {
   Container,
   Flex,
   Heading,
-  NativeSelect,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -120,8 +120,8 @@ export default function StaffUserDetailPage() {
       <SEO title="Staff · User access" noIndex />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="850px" py={10}>
-          <NextLink href="/staff/users">← Registered users</NextLink>
-          <Heading as="h1" mt={4} mb={5}>
+          <NextLink href="/staff/users">← Registered Users</NextLink>
+          <Heading as="h1" size="2xl" color="var(--site-heading)" mt={4} mb={5}>
             Edit user and access
           </Heading>
           {profileError || error ? (
@@ -151,7 +151,8 @@ export default function StaffUserDetailPage() {
                 borderWidth="1px"
                 borderColor="var(--site-border)"
                 borderRadius="xl"
-                p={6}
+                bg="var(--site-surface)"
+                p={{ base: 5, md: 6 }}
               >
                 <Heading as="h2" size="lg">
                   {result.user.username || "User without a public username"}
@@ -182,7 +183,8 @@ export default function StaffUserDetailPage() {
                   borderWidth="1px"
                   borderColor="var(--site-border)"
                   borderRadius="xl"
-                  p={6}
+                  bg="var(--site-surface)"
+                  p={{ base: 5, md: 6 }}
                 >
                   <Heading as="h2" size="lg" mb={2}>
                     Assign a property
@@ -193,28 +195,25 @@ export default function StaffUserDetailPage() {
                   </Text>
                   <Flex
                     gap={3}
-                    align="end"
+                    align={{ base: "stretch", sm: "end" }}
                     direction={{ base: "column", sm: "row" }}
                   >
-                    <NativeSelect.Root flex="1" w="100%">
-                      <NativeSelect.Field
-                        aria-label="Property to assign"
+                    <Box flex="1" minW={0}>
+                      <FormSelect
+                        label="Property to assign"
+                        placeholder="Select a property"
                         value={selectedPropertyId}
-                        onChange={(event) =>
-                          setSelectedPropertyId(event.target.value)
-                        }
-                      >
-                        <option value="">Select a property</option>
-                        {availableProperties.map((property) => (
-                          <option key={property.id} value={property.id}>
-                            {property.name}
-                          </option>
-                        ))}
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                        onValueChange={setSelectedPropertyId}
+                        disabled={pending || !availableProperties.length}
+                        options={availableProperties.map((property) => ({
+                          value: String(property.id),
+                          label: property.name,
+                        }))}
+                      />
+                    </Box>
                     <Button
                       loading={pending}
+                      minH="48px"
                       disabled={!selectedPropertyId}
                       onClick={() => void assignProperty()}
                     >
@@ -243,6 +242,7 @@ export default function StaffUserDetailPage() {
                         borderWidth="1px"
                         borderColor="var(--site-border)"
                         borderRadius="lg"
+                        bg="var(--site-surface)"
                         p={4}
                         justify="space-between"
                         align={{ base: "stretch", sm: "center" }}

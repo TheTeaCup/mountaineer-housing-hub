@@ -65,7 +65,7 @@ export default function EditAgency({
       <SEO title="Edit rental agency" noIndex />
       <Container maxW="800px" py={10}>
         <NextLink href={assigned ? "/account" : "/staff/agencies"}>
-          ← {assigned ? "My account" : "Rental agencies"}
+          ← {assigned ? "My Account" : "Rental Agencies"}
         </NextLink>
         <Heading as="h1" my={5}>
           Edit rental agency

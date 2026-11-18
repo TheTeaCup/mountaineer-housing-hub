@@ -4,6 +4,7 @@ import ReviewPhotoGrid, {
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
+import FormSelect from "@/components/ui/form-select";
 import PaginationControls from "@/components/ui/pagination-controls";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest, accountRoleLabel } from "@/utils/api/account";
@@ -15,7 +16,6 @@ import {
   Flex,
   Heading,
   Input,
-  NativeSelect,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -287,7 +287,7 @@ export default function StaffDashboard({
       <SEO title={`Staff · ${title}`} noIndex />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1100px" py={10}>
-          <NextLink href="/staff">← Staff dashboard</NextLink>
+          <NextLink href="/staff">← Staff Dashboard</NextLink>
           <Heading as="h1" mt={4} mb={3}>
             {title}
           </Heading>
@@ -415,55 +415,43 @@ export default function StaffDashboard({
                     />
                     <Flex gap={4} mt={4} flexWrap="wrap">
                       <Box flex="1" minW="220px">
-                        <Text as="label" fontSize="sm" fontWeight="semibold">
-                          Pending suggestion type
-                        </Text>
-                        <NativeSelect.Root mt={1}>
-                          <NativeSelect.Field
-                            aria-label="Filter pending suggestions by type"
-                            value={submissionFilter}
-                            onChange={(event) => {
-                              setSubmissionFilter(event.currentTarget.value);
-                              setApartmentPage(1);
-                            }}
-                          >
-                            <option value="all">All suggestions</option>
-                            <option value="property">Properties only</option>
-                            <option value="agency">Agencies only</option>
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator />
-                        </NativeSelect.Root>
+                        <FormSelect
+                          label="Pending suggestion type"
+                          value={submissionFilter}
+                          onValueChange={(value) => {
+                            setSubmissionFilter(value);
+                            setApartmentPage(1);
+                          }}
+                          options={[
+                            { value: "all", label: "All suggestions" },
+                            { value: "property", label: "Properties only" },
+                            { value: "agency", label: "Agencies only" },
+                          ]}
+                        />
                       </Box>
                       <Box flex="1" minW="220px">
-                        <Text as="label" fontSize="sm" fontWeight="semibold">
-                          Existing property status
-                        </Text>
-                        <NativeSelect.Root mt={1}>
-                          <NativeSelect.Field
-                            aria-label="Filter existing properties by status"
-                            value={propertyStatusFilter}
-                            onChange={(event) => {
-                              setPropertyStatusFilter(
-                                event.currentTarget.value,
-                              );
-                              setPropertyPage(1);
-                            }}
-                          >
-                            <option value="all">All statuses</option>
-                            {Array.from(
+                        <FormSelect
+                          label="Existing property status"
+                          value={propertyStatusFilter}
+                          onValueChange={(value) => {
+                            setPropertyStatusFilter(value);
+                            setPropertyPage(1);
+                          }}
+                          options={[
+                            { value: "all", label: "All statuses" },
+                            ...Array.from(
                               new Set(
                                 properties.map((property) => property.status),
                               ),
                             )
                               .sort()
-                              .map((status) => (
-                                <option key={status} value={status}>
-                                  {status.replace(/_/g, " ")}
-                                </option>
-                              ))}
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator />
-                        </NativeSelect.Root>
+                              .filter((status) => status !== "all")
+                              .map((status) => ({
+                                value: status,
+                                label: status.replace(/_/g, " "),
+                              })),
+                          ]}
+                        />
                       </Box>
                     </Flex>
                     {(normalizedPropertySearch ||
@@ -637,31 +625,26 @@ export default function StaffDashboard({
                         />
                       </Box>
                       <Box flex="1" minW="220px">
-                        <Text as="label" fontSize="sm" fontWeight="semibold">
-                          Filter
-                        </Text>
-                        <NativeSelect.Root mt={1}>
-                          <NativeSelect.Field
-                            aria-label="Filter rental agencies"
-                            value={agencyFilter}
-                            onChange={(event) => {
-                              setAgencyFilter(event.currentTarget.value);
-                              setAgencyPage(1);
-                            }}
-                          >
-                            <option value="all">All agencies</option>
-                            <option value="linked">
-                              Has linked properties
-                            </option>
-                            <option value="unlinked">
-                              No linked properties
-                            </option>
-                            <option value="missing-contact">
-                              Missing contact details
-                            </option>
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator />
-                        </NativeSelect.Root>
+                        <FormSelect
+                          label="Filter rental agencies"
+                          value={agencyFilter}
+                          onValueChange={(value) => {
+                            setAgencyFilter(value);
+                            setAgencyPage(1);
+                          }}
+                          options={[
+                            { value: "all", label: "All agencies" },
+                            { value: "linked", label: "Has linked properties" },
+                            {
+                              value: "unlinked",
+                              label: "No linked properties",
+                            },
+                            {
+                              value: "missing-contact",
+                              label: "Missing contact details",
+                            },
+                          ]}
+                        />
                       </Box>
                     </Flex>
                     {(normalizedAgencySearch || agencyFilter !== "all") && (

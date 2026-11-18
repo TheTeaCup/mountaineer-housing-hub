@@ -7,7 +7,13 @@ import { Box, Button, Flex, Menu, Portal, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { FiChevronDown, FiLogOut, FiShield, FiUser } from "react-icons/fi";
+import {
+  FiChevronDown,
+  FiLogOut,
+  FiSearch,
+  FiShield,
+  FiUser,
+} from "react-icons/fi";
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -84,6 +90,25 @@ export default function NavBar() {
               </NextLink>
             );
           })}
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            minH="40px"
+            px={{ base: 2, md: 3 }}
+            bg={pathname === "/search" ? "#ffc72c" : "transparent"}
+            color={pathname === "/search" ? "#111111" : "white"}
+            borderColor={pathname === "/search" ? "#ffc72c" : "whiteAlpha.400"}
+            _hover={{ bg: "#ffc72c", color: "#111111", borderColor: "#ffc72c" }}
+          >
+            <NextLink
+              href="/search"
+              aria-current={pathname === "/search" ? "page" : undefined}
+            >
+              <FiSearch aria-hidden="true" />
+              Search
+            </NextLink>
+          </Button>
           <ColorModeButton
             color="white"
             size="md"

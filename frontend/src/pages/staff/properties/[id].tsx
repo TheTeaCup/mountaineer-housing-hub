@@ -2,6 +2,8 @@ import SEO from "@/components/seo";
 import PropertyEditorNav from "@/components/staff/property-editor-nav";
 import type { StaffPropertyPhoto } from "@/components/staff/property-photo-manager";
 import { useAccount } from "@/components/ui/account-provider";
+import Input from "@/components/ui/form-input";
+import FormSelect from "@/components/ui/form-select";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import appalCart from "@/data/appalcart.json";
 import type { FloorPlan } from "@/types/properties";
@@ -16,8 +18,6 @@ import {
   Field,
   Flex,
   Heading,
-  Input,
-  NativeSelect,
   SimpleGrid,
   Stack,
   Text,
@@ -84,6 +84,8 @@ export default function EditProperty({
   const [property, setProperty] = useState<PropertyForm | null>(null);
   const [agencies, setAgencies] = useState<AgencyOption[]>([]);
   const [selectedAgencyId, setSelectedAgencyId] = useState("");
+  const [parkingType, setParkingType] = useState("unknown");
+  const [propertyType, setPropertyType] = useState("apartment_complex");
   const [creatingAgency, setCreatingAgency] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -126,6 +128,8 @@ export default function EditProperty({
             floor_plans: property.floor_plans ?? [],
           });
           setAgencies(agencies);
+          setParkingType(property.parking_type || "unknown");
+          setPropertyType(property.property_type || "apartment_complex");
           setSelectedAgencyId(
             property.agency_id === null ? "" : String(property.agency_id),
           );
@@ -202,9 +206,9 @@ export default function EditProperty({
       <SEO title={suggestion ? "Review suggestion" : "Edit property"} noIndex />
       <Container maxW="800px" py={10}>
         <NextLink href={assigned ? "/account" : "/staff/apartments"}>
-          ← {assigned ? "My account" : "Property submissions and listings"}
+          ← {assigned ? "My Account" : "Apartment Submissions"}
         </NextLink>
-        <Heading as="h1" my={5}>
+        <Heading as="h1" size="2xl" color="var(--site-heading)" my={5}>
           {suggestion ? "Review and edit suggestion" : "Edit property"}
         </Heading>
         {!suggestion && typeof id === "string" && (
@@ -513,9 +517,39 @@ export default function EditProperty({
                     </Text>
                     <SimpleGrid columns={{ base: 2, md: 3 }} gap={3}>
                       {appalCart.routes.map(({ id, name }) => (
-                        <Flex as="label" key={id} align="center" gap={2}>
+                        <Flex
+                          as="label"
+                          key={id}
+                          align="center"
+                          gap={2}
+                          minH="44px"
+                          px={3}
+                          py={2}
+                          borderWidth="1px"
+                          borderColor="var(--site-border)"
+                          borderRadius="lg"
+                          cursor="pointer"
+                          bg="var(--site-control)"
+                          fontSize="sm"
+                          css={{
+                            "&:has(input:checked)": {
+                              background: "var(--site-accent-soft)",
+                              borderColor: "var(--site-accent-fg)",
+                            },
+                            "&:focus-within": {
+                              outline: "2px solid var(--site-accent-fg)",
+                              outlineOffset: "2px",
+                            },
+                          }}
+                        >
                           <input
                             type="checkbox"
+                            style={{
+                              accentColor: "#ffc72c",
+                              width: "16px",
+                              height: "16px",
+                              flexShrink: 0,
+                            }}
                             name="bus_route_ids"
                             value={id}
                             defaultChecked={property.bus_route_ids?.includes(
@@ -529,28 +563,31 @@ export default function EditProperty({
                   </Box>
                 )}
                 {!suggestion && (
-                  <Field.Root>
-                    <Field.Label>Parking</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        name="parking_type"
-                        defaultValue={property.parking_type || ""}
-                      >
-                        <option value="">Unknown / not verified</option>
-                        <option value="free">Free parking</option>
-                        <option value="monthly">Monthly fee</option>
-                        <option value="one_time">One-time fee</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <Field.HelperText>
-                      Choose the verified parking arrangement for this property.
-                    </Field.HelperText>
-                  </Field.Root>
+                  <Box>
+                    <input
+                      type="hidden"
+                      name="parking_type"
+                      value={parkingType === "unknown" ? "" : parkingType}
+                    />
+                    <FormSelect
+                      label="Parking"
+                      value={parkingType}
+                      onValueChange={setParkingType}
+                      options={[
+                        { value: "unknown", label: "Unknown / not verified" },
+                        { value: "free", label: "Free parking" },
+                        { value: "monthly", label: "Monthly fee" },
+                        { value: "one_time", label: "One-time fee" },
+                      ]}
+                      helperText="Choose the verified parking arrangement for this property."
+                    />
+                  </Box>
                 )}
                 {property.submission_kind !== "agency" && (
                   <Box
-                    bg="var(--site-muted-surface)"
+                    bg="var(--site-control)"
+                    borderWidth="1px"
+                    borderColor="var(--site-border)"
                     borderRadius="lg"
                     p={{ base: 4, md: 5 }}
                   >
@@ -558,60 +595,48 @@ export default function EditProperty({
                       Type and management
                     </Heading>
                     <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-                      <Field.Root>
-                        <Field.Label>Property type</Field.Label>
-                        <NativeSelect.Root>
-                          <NativeSelect.Field
-                            name="property_type"
-                            defaultValue={property.property_type}
-                          >
-                            {[
-                              "apartment_complex",
-                              "townhome",
-                              "house",
-                              "duplex",
-                              "condo",
-                              "other",
-                            ].map((type) => (
-                              <option key={type} value={type}>
-                                {propertyTypeLabel(type)}
-                              </option>
-                            ))}
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator />
-                        </NativeSelect.Root>
-                      </Field.Root>
-                      <Field.Root>
-                        <Field.Label>Managing agency</Field.Label>
-                        <NativeSelect.Root
+                      <FormSelect
+                        name="property_type"
+                        label="Property type"
+                        value={propertyType}
+                        onValueChange={setPropertyType}
+                        options={[
+                          "apartment_complex",
+                          "townhome",
+                          "house",
+                          "duplex",
+                          "condo",
+                          "other",
+                        ].map((type) => ({
+                          value: type,
+                          label: propertyTypeLabel(type),
+                        }))}
+                      />
+                      <Box>
+                        <input
+                          type="hidden"
+                          name="agency_id"
+                          value={selectedAgencyId}
                           disabled={assigned && role !== "staff"}
-                        >
-                          <NativeSelect.Field
-                            name="agency_id"
-                            value={selectedAgencyId}
-                            onChange={(event) => {
-                              setSelectedAgencyId(event.currentTarget.value);
-                              setCreatingAgency(false);
-                            }}
-                          >
-                            <option value="">No agency selected</option>
-                            {agencies.map((agency) => (
-                              <option key={agency.id} value={agency.id}>
-                                {agency.name}
-                              </option>
-                            ))}
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator />
-                        </NativeSelect.Root>
-                        <Field.HelperText>
-                          {assigned && role !== "staff"
-                            ? "Contact staff to change the managing agency. "
-                            : ""}
-                          {selectedAgency
-                            ? `Using ${selectedAgency.name} as the managing company.`
-                            : "Link a separate management company when one is known."}
-                        </Field.HelperText>
-                      </Field.Root>
+                        />
+                        <FormSelect
+                          label="Managing agency"
+                          value={selectedAgencyId || "none"}
+                          disabled={assigned && role !== "staff"}
+                          onValueChange={(value) => {
+                            setSelectedAgencyId(value === "none" ? "" : value);
+                            setCreatingAgency(false);
+                          }}
+                          options={[
+                            { value: "none", label: "No agency selected" },
+                            ...agencies.map((agency) => ({
+                              value: String(agency.id),
+                              label: agency.name,
+                            })),
+                          ]}
+                          helperText={`${assigned && role !== "staff" ? "Contact staff to change the managing agency. " : ""}${selectedAgency ? `Using ${selectedAgency.name} as the managing company.` : "Link a separate management company when one is known."}`}
+                        />
+                      </Box>
                     </SimpleGrid>
                     {suggestion && selectedAgency && (
                       <Box mt={4}>
@@ -705,6 +730,18 @@ export default function EditProperty({
                     Summarize the property, location, and notable amenities.
                   </Text>
                   <Textarea
+                    bg="var(--site-control)"
+                    color="var(--site-fg)"
+                    borderWidth="1px"
+                    borderColor="var(--site-border)"
+                    borderRadius="xl"
+                    p={4}
+                    lineHeight="tall"
+                    resize="vertical"
+                    _focusVisible={{
+                      outline: "2px solid var(--site-accent-fg)",
+                      outlineOffset: "2px",
+                    }}
                     name="information"
                     aria-label="Description"
                     defaultValue={property.information ?? ""}

@@ -1,5 +1,6 @@
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
+import FormSelect from "@/components/ui/form-select";
 import { FormPageSkeleton } from "@/components/ui/page-skeletons";
 import SignInRequired from "@/components/ui/sign-in-required";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
@@ -10,7 +11,7 @@ import {
   Field,
   Heading,
   Input,
-  NativeSelect,
+  SimpleGrid,
   Stack,
   Text,
   Textarea,
@@ -33,11 +34,16 @@ export default function ReviewForm() {
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [rating, setRating] = useState(0);
+  const [propertySlug, setPropertySlug] = useState("");
+  const [recommendation, setRecommendation] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [compressingPhotos, setCompressingPhotos] = useState(false);
   const [error, setError] = useState("");
   const requestedProperty =
     typeof router.query.property === "string" ? router.query.property : "";
+  useEffect(() => {
+    setPropertySlug(requestedProperty);
+  }, [requestedProperty]);
   useEffect(() => {
     if (!session) return;
     let active = true;
@@ -98,10 +104,15 @@ export default function ReviewForm() {
     );
   return (
     <>
-      <Heading as="h1" mb={3}>
+      <Heading
+        as="h1"
+        size={{ base: "2xl", md: "3xl" }}
+        color="var(--site-heading)"
+        mb={3}
+      >
         Submit an Apartment Review
       </Heading>
-      <Text mb={6}>
+      <Text mb={6} color="var(--site-muted)" lineHeight="tall">
         Review the community or standalone rental where you lived. Buildings
         within University Highlands share one community listing and its reviews.
         For an agency with properties across town, choose the specific property
@@ -115,6 +126,30 @@ export default function ReviewForm() {
       )}
       <Box
         as="form"
+        p={{ base: 5, md: 8 }}
+        bg="var(--site-surface)"
+        borderWidth="1px"
+        borderColor="var(--site-border)"
+        borderRadius="2xl"
+        css={{
+          "& input:not([type='hidden']):not([type='checkbox']), & textarea": {
+            background: "var(--site-control)",
+            color: "var(--site-fg)",
+            border: "1px solid var(--site-border)",
+            borderRadius: "0.75rem",
+            padding: "0.75rem 1rem",
+            minHeight: "48px",
+            width: "100%",
+          },
+          "& textarea": { resize: "vertical" },
+          "& input::placeholder, & textarea::placeholder": {
+            color: "var(--site-muted)",
+          },
+          "& input:focus-visible, & textarea:focus-visible": {
+            outline: "2px solid var(--site-accent-fg)",
+            outlineOffset: "2px",
+          },
+        }}
         onSubmit={async (e) => {
           e.preventDefault();
           if (!terms.ready) return;
@@ -132,6 +167,8 @@ export default function ReviewForm() {
             form.reset();
             terms.setAgreed(false);
             setRating(0);
+            setPropertySlug(requestedProperty);
+            setRecommendation("");
             setPhotos([]);
           } catch (err) {
             notifyError("Could not submit review", err);
@@ -140,29 +177,24 @@ export default function ReviewForm() {
           }
         }}
       >
-        <Stack gap={5}>
-          <Field.Root required>
-            <Field.Label>
-              Apartment <Field.RequiredIndicator />
-            </Field.Label>
-            <NativeSelect.Root disabled={propertiesLoading}>
-              <NativeSelect.Field
-                key={requestedProperty}
-                name="slug"
-                placeholder="Select an apartment"
-                defaultValue={requestedProperty}
-              >
-                {properties.map((property) => (
-                  <option key={property.slug} value={property.slug}>
-                    {property.name}
-                    {property.agency_name
-                      ? ` — managed by ${property.agency_name}`
-                      : ""}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator color="var(--site-muted)" />
-            </NativeSelect.Root>
+        <Stack gap={6}>
+          <Box>
+            <FormSelect
+              name="slug"
+              label="Apartment"
+              required
+              disabled={propertiesLoading}
+              placeholder="Select an apartment"
+              value={propertySlug}
+              onValueChange={setPropertySlug}
+              options={properties.map((property) => ({
+                value: property.slug,
+                label: property.name,
+                description: property.agency_name
+                  ? `Managed by ${property.agency_name}`
+                  : undefined,
+              }))}
+            />
             {propertiesLoading ? (
               <Text>Loading apartments…</Text>
             ) : (
@@ -170,12 +202,21 @@ export default function ReviewForm() {
                 <Text>No apartments are available for reviews yet.</Text>
               )
             )}
-          </Field.Root>
-          <NextLink href="/submit/apartment">
-            <Button variant="outline">
+          </Box>
+          <Button
+            asChild
+            variant="outline"
+            alignSelf="flex-start"
+            h="auto"
+            minH="44px"
+            py={3}
+            whiteSpace="normal"
+            textAlign="start"
+          >
+            <NextLink href="/submit/apartment">
               Apartment missing? Suggest a property or agency
-            </Button>
-          </NextLink>
+            </NextLink>
+          </Button>
           <Field.Root required>
             <Field.Label>
               Overall rating <Field.RequiredIndicator />
@@ -194,28 +235,35 @@ export default function ReviewForm() {
               placeholder="Tell us about your experience living here…"
             />
           </Field.Root>
-          <Field.Root>
-            <Field.Label>What did you like?</Field.Label>
-            <Input name="pros" maxLength={2000} />
-          </Field.Root>
-          <Field.Root>
-            <Field.Label>What could be improved?</Field.Label>
-            <Input name="cons" maxLength={2000} />
-          </Field.Root>
-          <Field.Root>
-            <Field.Label>Would you recommend this apartment?</Field.Label>
-            <NativeSelect.Root>
-              <NativeSelect.Field
-                name="recommendation"
-                placeholder="Select an option"
-              >
-                <option value="yes">Yes</option>
-                <option value="maybe">Maybe</option>
-                <option value="no">No</option>
-              </NativeSelect.Field>
-              <NativeSelect.Indicator color="var(--site-muted)" />
-            </NativeSelect.Root>
-          </Field.Root>
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={5}>
+            <Field.Root>
+              <Field.Label>What did you like?</Field.Label>
+              <Input
+                name="pros"
+                maxLength={2000}
+                placeholder="What stood out?"
+              />
+            </Field.Root>
+            <Field.Root>
+              <Field.Label>What could be improved?</Field.Label>
+              <Input
+                name="cons"
+                maxLength={2000}
+                placeholder="What would you change?"
+              />
+            </Field.Root>
+          </SimpleGrid>
+          <FormSelect
+            name="recommendation"
+            label="Would you recommend this apartment?"
+            value={recommendation}
+            onValueChange={setRecommendation}
+            options={[
+              { value: "yes", label: "Yes" },
+              { value: "maybe", label: "Maybe" },
+              { value: "no", label: "No" },
+            ]}
+          />
           <ReviewPhotoPicker
             photos={photos}
             onChange={setPhotos}

@@ -46,6 +46,9 @@ export default function AuthLogin() {
 
       <Box
         flex="1"
+        minH={{ base: "auto", md: "calc(100svh - 84px)" }}
+        display="flex"
+        alignItems="center"
         bg="var(--site-bg)"
         color="var(--site-fg)"
         fontFamily="Segoe UI, Tahoma, Geneva, Verdana, sans-serif"

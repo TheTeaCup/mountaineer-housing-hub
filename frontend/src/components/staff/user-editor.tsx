@@ -1,3 +1,5 @@
+import FormInput from "@/components/ui/form-input";
+import FormSelect from "@/components/ui/form-select";
 import { accountRequest } from "@/utils/api/account";
 import {
   Box,
@@ -5,8 +7,6 @@ import {
   Field,
   Flex,
   Heading,
-  Input,
-  NativeSelect,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -29,6 +29,7 @@ export function SetupLink({ url }: { url: string }) {
     <Box
       borderWidth="1px"
       borderColor="var(--site-border)"
+      bg="var(--site-control)"
       p={4}
       borderRadius="lg"
     >
@@ -39,7 +40,7 @@ export function SetupLink({ url }: { url: string }) {
         Share this link privately with the account owner. It expires in 24 hours
         and works once. Creating a new link replaces the previous one.
       </Text>
-      <Input
+      <FormInput
         aria-label="Password setup link"
         readOnly
         value={url}
@@ -76,17 +77,20 @@ export default function UserEditor({
 }) {
   const [pending, setPending] = useState(false);
   const [setupUrl, setSetupUrl] = useState("");
+  const [role, setRole] = useState(user.role);
+  const [status, setStatus] = useState(user.status);
   return (
     <Box
       borderWidth="1px"
       borderColor="var(--site-border)"
-      p={6}
+      bg="var(--site-surface)"
+      p={{ base: 5, md: 6 }}
       borderRadius="xl"
     >
       <Heading as="h2" size="lg" mb={3}>
         Edit user
       </Heading>
-      <Text mb={4}>
+      <Text mb={5} color="var(--site-muted)" overflowWrap="anywhere">
         {user.email} ·{" "}
         {user.account_kind === "external"
           ? user.activated_at
@@ -119,10 +123,10 @@ export default function UserEditor({
           disabled={pending}
           style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}
         >
-          <Stack gap={4}>
+          <Stack gap={5}>
             <Field.Root required>
               <Field.Label>Account name</Field.Label>
-              <Input
+              <FormInput
                 name="name"
                 required
                 maxLength={255}
@@ -131,42 +135,38 @@ export default function UserEditor({
             </Field.Root>
             <Field.Root required>
               <Field.Label>Public username</Field.Label>
-              <Input
+              <FormInput
                 name="username"
                 required
                 maxLength={100}
                 defaultValue={user.username ?? ""}
               />
             </Field.Root>
-            <Field.Root>
-              <Field.Label>Role</Field.Label>
-              <NativeSelect.Root>
-                <NativeSelect.Field name="role" defaultValue={user.role}>
-                  <option value="user">User</option>
-                  <option value="property_manager">Property Manager</option>
-                  <option value="staff">Staff</option>
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-              <Field.HelperText>
-                Property managers receive access only to assigned properties or
-                agencies. Staff can manage the entire site.
-              </Field.HelperText>
-            </Field.Root>
-            <Field.Root>
-              <Field.Label>Account status</Field.Label>
-              <NativeSelect.Root>
-                <NativeSelect.Field name="status" defaultValue={user.status}>
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-              <Field.HelperText>
-                Suspending an account blocks sign-in and ends its active
-                sessions.
-              </Field.HelperText>
-            </Field.Root>
+            <FormSelect
+              name="role"
+              label="Role"
+              value={role}
+              onValueChange={setRole}
+              disabled={pending}
+              options={[
+                { value: "user", label: "User" },
+                { value: "property_manager", label: "Property Manager" },
+                { value: "staff", label: "Staff" },
+              ]}
+              helperText="Property managers receive access only to assigned properties or agencies. Staff can manage the entire site."
+            />
+            <FormSelect
+              name="status"
+              label="Account status"
+              value={status}
+              onValueChange={setStatus}
+              disabled={pending}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "suspended", label: "Suspended" },
+              ]}
+              helperText="Suspending an account blocks sign-in and ends its active sessions."
+            />
             <Button type="submit" loading={pending} alignSelf="flex-start">
               Save user
             </Button>
@@ -241,20 +241,27 @@ export function AgencyAccessEditor({
     <Box
       borderWidth="1px"
       borderColor="var(--site-border)"
-      p={6}
+      bg="var(--site-surface)"
+      p={{ base: 5, md: 6 }}
       borderRadius="xl"
     >
       <Heading as="h2" size="lg" mb={2}>
         Agency property access
       </Heading>
-      <Text mb={4}>
+      <Text mb={4} color="var(--site-muted)" lineHeight="tall">
         Grant access to all properties currently managed by an agency, including
         listings linked to it in the future. Moving a property to another agency
         removes this inherited access. Individual property grants are separate.
       </Text>
       <Stack gap={3}>
         {assignedAgencies.map((agency) => (
-          <Flex key={agency.id} justify="space-between" gap={3} align="center">
+          <Flex
+            key={agency.id}
+            justify="space-between"
+            gap={3}
+            align={{ base: "start", sm: "center" }}
+            direction={{ base: "column", sm: "row" }}
+          >
             <Text>{agency.name}</Text>
             <Button
               type="button"
@@ -271,32 +278,35 @@ export function AgencyAccessEditor({
           <Text color="var(--site-muted)">No agency access assigned.</Text>
         )}
         {user.role === "property_manager" && user.status === "active" && (
-          <Flex gap={3} direction={{ base: "column", sm: "row" }}>
-            <NativeSelect.Root flex="1">
-              <NativeSelect.Field
-                aria-label="Agency to assign"
+          <Flex
+            gap={3}
+            align={{ base: "stretch", sm: "end" }}
+            direction={{ base: "column", sm: "row" }}
+          >
+            <Box flex="1" minW={0}>
+              <FormSelect
+                label="Agency to assign"
+                placeholder="Select an agency"
                 value={selected}
-                onChange={(event) => setSelected(event.target.value)}
-              >
-                <option value="">Select an agency</option>
-                {agencies
+                onValueChange={setSelected}
+                disabled={pending}
+                options={agencies
                   .filter(
                     (agency) =>
                       !assignedAgencies.some(
                         (assigned) => assigned.id === agency.id,
                       ),
                   )
-                  .map((agency) => (
-                    <option key={agency.id} value={agency.id}>
-                      {agency.name}
-                    </option>
-                  ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+                  .map((agency) => ({
+                    value: String(agency.id),
+                    label: agency.name,
+                  }))}
+              />
+            </Box>
             <Button
               type="button"
               disabled={!selected || pending}
+              minH="48px"
               onClick={() => void update(selected, "PUT")}
             >
               Grant agency access

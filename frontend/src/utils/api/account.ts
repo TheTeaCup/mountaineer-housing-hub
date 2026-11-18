@@ -56,6 +56,7 @@ export interface AccountProfile {
   avatar_variant: "beam" | "marble" | "bauhaus" | "ring";
   avatar_palette: "gold" | "forest" | "ocean";
   avatar_seed: string | null;
+  onboarding_completed_at?: string | null;
 }
 export interface MyReview {
   id: number;

@@ -1,6 +1,7 @@
 import SEO from "@/components/seo";
 import { SetupLink } from "@/components/staff/user-editor";
 import { useAccount } from "@/components/ui/account-provider";
+import FormInput from "@/components/ui/form-input";
 import { accountRequest } from "@/utils/api/account";
 import {
   Box,
@@ -8,7 +9,6 @@ import {
   Container,
   Field,
   Heading,
-  Input,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -28,7 +28,7 @@ export default function NewExternalUser() {
       <SEO title="Create external account · Staff" noIndex />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="700px" py={10}>
-          <NextLink href="/staff/users">← Registered users</NextLink>
+          <NextLink href="/staff/users">← Registered Users</NextLink>
           <Heading as="h1" mt={4} mb={4}>
             Create agency or external account
           </Heading>
@@ -50,10 +50,18 @@ export default function NewExternalUser() {
               </NextLink>
             </Stack>
           ) : (
-            <form
+            <Box
+              as="form"
+              bg="var(--site-surface)"
+              borderWidth="1px"
+              borderColor="var(--site-border)"
+              borderRadius="xl"
+              p={{ base: 5, md: 6 }}
               onSubmit={async (event) => {
                 event.preventDefault();
-                const form = new FormData(event.currentTarget);
+                const form = new FormData(
+                  event.currentTarget as unknown as HTMLFormElement,
+                );
                 setPending(true);
                 setError("");
                 try {
@@ -80,7 +88,7 @@ export default function NewExternalUser() {
                 </Text>
                 <Field.Root required>
                   <Field.Label>Account name</Field.Label>
-                  <Input
+                  <FormInput
                     name="name"
                     required
                     maxLength={255}
@@ -89,7 +97,7 @@ export default function NewExternalUser() {
                 </Field.Root>
                 <Field.Root required>
                   <Field.Label>Email address</Field.Label>
-                  <Input
+                  <FormInput
                     name="email"
                     type="email"
                     required
@@ -106,7 +114,7 @@ export default function NewExternalUser() {
                   Create account and setup link
                 </Button>
               </Stack>
-            </form>
+            </Box>
           )}
         </Container>
       </Box>

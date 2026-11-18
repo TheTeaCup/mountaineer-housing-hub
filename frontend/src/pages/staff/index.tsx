@@ -132,7 +132,7 @@ export default function StaffHome() {
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1000px" py={10}>
           <Heading as="h1" mb={3}>
-            Staff dashboard
+            Staff Dashboard
           </Heading>
           {loading ? (
             <Text>Checking access…</Text>
