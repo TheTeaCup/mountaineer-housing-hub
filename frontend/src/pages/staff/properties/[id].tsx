@@ -47,7 +47,9 @@ interface PropertyForm {
   longitude: string | number | null;
   phone: string | null;
   bus_route_ids?: string[] | null;
-  parking_type?: "free" | "monthly" | "one_time" | null;
+  parking_type?: "free" | "monthly" | "yearly" | "semester" | "one_time" | null;
+  parking_fee?: number | string | null;
+  parking_notes?: string | null;
   photos: StaffPropertyPhoto[];
   floor_plans: FloorPlan[];
 }
@@ -231,6 +233,7 @@ export default function EditProperty({
             <Box
               key={property.id}
               as="form"
+              className="submission-form"
               ref={formRef}
               bg="var(--site-surface)"
               borderWidth="1px"
@@ -251,6 +254,9 @@ export default function EditProperty({
                 try {
                   const edits = {
                     ...data,
+                    ...(!suggestion
+                      ? { parking_fee: data.parking_fee || null }
+                      : {}),
                     ...(canEditBusRoutes ? { bus_route_ids: busRouteIds } : {}),
                     submission_kind: property.submission_kind ?? "property",
                     agency_id:
@@ -291,6 +297,11 @@ export default function EditProperty({
                           phone: String(data.phone || "") || null,
                           parking_type: (data.parking_type ||
                             null) as PropertyForm["parking_type"],
+                          parking_fee: data.parking_fee
+                            ? Number(data.parking_fee)
+                            : null,
+                          parking_notes:
+                            String(data.parking_notes || "") || null,
                           latitude: String(data.latitude || "") || null,
                           longitude: String(data.longitude || "") || null,
                           bus_route_ids: canEditBusRoutes
@@ -577,10 +588,40 @@ export default function EditProperty({
                         { value: "unknown", label: "Unknown / not verified" },
                         { value: "free", label: "Free parking" },
                         { value: "monthly", label: "Monthly fee" },
+                        { value: "yearly", label: "Yearly fee" },
+                        { value: "semester", label: "Per-semester fee" },
                         { value: "one_time", label: "One-time fee" },
                       ]}
                       helperText="Choose the verified parking arrangement for this property."
                     />
+                    <Field.Root mt={4}>
+                      <Field.Label>Parking price (USD)</Field.Label>
+                      <Input
+                        key={`parking-${property.id}-${parkingType}`}
+                        name="parking_fee"
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        max="999999.99"
+                        step="0.01"
+                        disabled={["unknown", "free"].includes(parkingType)}
+                        defaultValue={property.parking_fee ?? ""}
+                        placeholder="Leave blank if unverified"
+                      />
+                      <Field.HelperText>
+                        Amount charged for the billing period selected above.
+                        Free parking is saved as $0.
+                      </Field.HelperText>
+                    </Field.Root>
+                    <Field.Root mt={4}>
+                      <Field.Label>Parking notes</Field.Label>
+                      <Textarea
+                        name="parking_notes"
+                        defaultValue={property.parking_notes ?? ""}
+                        maxLength={2000}
+                        placeholder="For example: per vehicle, permit required, or limited spaces."
+                      />
+                    </Field.Root>
                   </Box>
                 )}
                 {property.submission_kind !== "agency" && (

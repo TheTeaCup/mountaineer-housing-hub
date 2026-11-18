@@ -39,6 +39,7 @@ export default function FilterSelect({
       <Select.Control>
         <Select.Trigger
           minH="48px"
+          borderWidth="1px"
           px={4}
           borderRadius="xl"
           borderColor="var(--site-border)"

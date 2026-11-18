@@ -100,6 +100,8 @@ export default function PropertiesCard({
               {
                 free: "Free",
                 monthly: "Monthly fee",
+                yearly: "Yearly fee",
+                semester: "Per-semester fee",
                 one_time: "One-time fee",
               }[property.parking_type]
             }

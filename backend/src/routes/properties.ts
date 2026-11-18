@@ -15,7 +15,9 @@ export interface PropertyRow {
   latitude: number | string | null;
   longitude: number | string | null;
   bus_route_ids: string[] | null;
-  parking_type: "free" | "monthly" | "one_time" | null;
+  parking_type: "free" | "monthly" | "yearly" | "semester" | "one_time" | null;
+  parking_fee: number | string | null;
+  parking_notes: string | null;
   website_url: string | null;
   phone: string | null;
   agency_id: number | null;
@@ -72,6 +74,8 @@ export function publicProperty(
     longitude: numberOrNull(row.longitude),
     bus_route_ids: row.bus_route_ids ?? [],
     parking_type: row.parking_type,
+    parking_fee: numberOrNull(row.parking_fee),
+    parking_notes: row.parking_notes,
     website_url: row.website_url,
     phone: row.phone,
     agency:
@@ -111,7 +115,7 @@ export function createPropertiesRouter(
   const router = Router();
   const select = `SELECT p.id, p.name, p.slug, p.property_type, p.description,
     p.address_line1, p.address_line2, p.city, p.state, p.postal_code,
-    p.latitude, p.longitude, p.bus_route_ids, p.parking_type, p.website_url, p.phone,
+    p.latitude, p.longitude, p.bus_route_ids, p.parking_type, p.parking_fee, p.parking_notes, p.website_url, p.phone,
     p.agency_id, a.name AS agency_name, a.slug AS agency_slug, a.website_url AS agency_website, a.phone AS agency_phone,
     COALESCE(r.review_count, 0) AS review_count, r.average_rating
     FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id
@@ -186,7 +190,9 @@ export function createPropertiesRouter(
       if (parking !== undefined) {
         if (
           typeof parking !== "string" ||
-          !["free", "monthly", "one_time"].includes(parking)
+          !["free", "monthly", "yearly", "semester", "one_time"].includes(
+            parking,
+          )
         ) {
           throw new Error("Invalid parking filter.");
         }

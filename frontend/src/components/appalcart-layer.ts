@@ -1,10 +1,7 @@
 import feed from "@/data/appalcart.json";
-import {
-  Popup,
-  type ExpressionSpecification,
-  type FilterSpecification,
-  type Map,
-} from "maplibre-gl";
+import { busLayerFilter } from "@/utils/bus-route-filter";
+import { Popup, type Map } from "maplibre-gl";
+export { busLayerFilter } from "@/utils/bus-route-filter";
 
 export const busRoutes = feed.routes;
 export const busLayers = ["bus-route-outline", "bus-routes", "bus-stops"];
@@ -28,24 +25,7 @@ const appalCartData: GeoJSON.FeatureCollection = {
   }),
 };
 
-function busRouteFilter(selection: string): ExpressionSpecification {
-  if (!selection) return ["!", ["has", "routeIds"]];
-  if (selection === "all") return ["has", "routeIds"];
-  return ["in", selection, ["get", "routeIds"]];
-}
-
-export function busLayerFilter(
-  layer: string,
-  selection: string,
-): FilterSpecification {
-  return [
-    "all",
-    ["==", ["geometry-type"], layer === "bus-stops" ? "Point" : "LineString"],
-    busRouteFilter(selection),
-  ];
-}
-
-export function addAppalCartLayers(map: Map, selection: string) {
+export function addAppalCartLayers(map: Map, selection: string | string[]) {
   map.addSource("appalcart", {
     type: "geojson",
     data: appalCartData,

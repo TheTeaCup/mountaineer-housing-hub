@@ -32,6 +32,9 @@ interface StaffReview {
   cons: string | null;
   recommendation: string | null;
   photos: ReviewPhoto[];
+  status: string;
+  created_at: string;
+  slug: string;
 }
 interface ApartmentSubmission {
   id: number;
@@ -94,6 +97,8 @@ export default function StaffDashboard({
           : "Review submissions";
   const [reviews, setReviews] = useState<StaffReview[]>([]);
   const [reviewPage, setReviewPage] = useState(1);
+  const [reviewStatus, setReviewStatus] = useState("pending");
+  const [reviewTotal, setReviewTotal] = useState(0);
   const [apartments, setApartments] = useState<ApartmentSubmission[]>([]);
   const [agencies, setAgencies] = useState<RentalAgency[]>([]);
   const [properties, setProperties] = useState<StaffProperty[]>([]);
@@ -121,8 +126,16 @@ export default function StaffDashboard({
       setError("");
       try {
         if (tab === "reviews") {
-          const data = await accountRequest<StaffReview[]>("/staff/reviews");
-          if (active) setReviews(data);
+          const data = await accountRequest<{
+            reviews: StaffReview[];
+            total: number;
+          }>(`/staff/reviews?status=${reviewStatus}&page=${reviewPage}`);
+          if (active) {
+            if (reviewPage > 1 && !data.reviews.length)
+              setReviewPage((value) => value - 1);
+            setReviews(data.reviews);
+            setReviewTotal(data.total);
+          }
         } else if (tab === "apartments") {
           const data =
             await accountRequest<ApartmentSubmission[]>("/staff/apartments");
@@ -155,7 +168,7 @@ export default function StaffDashboard({
     return () => {
       active = false;
     };
-  }, [profile?.role, tab, page, revision]);
+  }, [profile?.role, tab, page, revision, reviewStatus, reviewPage]);
   async function moderate(
     kind: "reviews" | "apartments",
     id: number,
@@ -255,10 +268,7 @@ export default function StaffDashboard({
     agencyPage,
     Math.max(1, Math.ceil(filteredAgencies.length / ADMIN_PAGE_SIZE)),
   );
-  const currentReviewPage = Math.min(
-    reviewPage,
-    Math.max(1, Math.ceil(reviews.length / ADMIN_PAGE_SIZE)),
-  );
+  const currentReviewPage = reviewPage;
   const paginatedApartments = filteredApartments.slice(
     (currentApartmentPage - 1) * ADMIN_PAGE_SIZE,
     currentApartmentPage * ADMIN_PAGE_SIZE,
@@ -271,10 +281,7 @@ export default function StaffDashboard({
     (currentAgencyPage - 1) * ADMIN_PAGE_SIZE,
     currentAgencyPage * ADMIN_PAGE_SIZE,
   );
-  const paginatedReviews = reviews.slice(
-    (currentReviewPage - 1) * ADMIN_PAGE_SIZE,
-    currentReviewPage * ADMIN_PAGE_SIZE,
-  );
+  const paginatedReviews = reviews;
   const panel = {
     bg: "var(--site-surface)",
     borderWidth: "1px",
@@ -337,14 +344,29 @@ export default function StaffDashboard({
               ) : error ? null : tab === "reviews" ? (
                 <Stack gap={4}>
                   <Heading as="h2" size="lg">
-                    Pending reviews
+                    Manage reviews
                   </Heading>
                   <Text fontSize="sm">
-                    Showing up to 100 oldest pending reviews. Approve to
-                    publish; reject to keep a review private.
+                    Browse pending, published, and rejected reviews. Reject a
+                    published review to remove it from public view, or delete it
+                    permanently.
                   </Text>
+                  <FormSelect
+                    label="Review status"
+                    value={reviewStatus}
+                    onValueChange={(value) => {
+                      setReviewStatus(value);
+                      setReviewPage(1);
+                    }}
+                    options={[
+                      { value: "pending", label: "Pending" },
+                      { value: "published", label: "Published" },
+                      { value: "rejected", label: "Rejected" },
+                      { value: "all", label: "All reviews" },
+                    ]}
+                  />
                   {!reviews.length && (
-                    <Text>No reviews waiting for approval.</Text>
+                    <Text>No reviews match this status.</Text>
                   )}
                   {paginatedReviews.map((review) => (
                     <Box {...panel} key={review.id}>
@@ -354,7 +376,16 @@ export default function StaffDashboard({
                       <Text my={2}>
                         {review.username || "Unknown user"} · {review.rating}/5
                       </Text>
-                      <Text whiteSpace="pre-wrap">{review.body}</Text>
+                      <Text fontSize="sm" color="var(--site-muted)" mb={2}>
+                        {review.status} ·{" "}
+                        {new Date(review.created_at).toLocaleString()}
+                      </Text>
+                      <NextLink href={`/properties/${review.slug}`}>
+                        View property →
+                      </NextLink>
+                      <Text whiteSpace="pre-wrap" mt={2}>
+                        {review.body}
+                      </Text>
                       {review.pros && <Text mt={2}>Pros: {review.pros}</Text>}
                       {review.cons && <Text mt={2}>Cons: {review.cons}</Text>}
                       {review.recommendation && (
@@ -363,9 +394,11 @@ export default function StaffDashboard({
                         </Text>
                       )}
                       <ReviewPhotoGrid photos={review.photos} />
-                      <Flex gap={3} mt={4}>
+                      <Flex gap={3} mt={4} wrap="wrap">
                         <Button
-                          disabled={pending !== null}
+                          disabled={
+                            pending !== null || review.status === "published"
+                          }
                           onClick={() =>
                             moderate("reviews", review.id, "published")
                           }
@@ -373,22 +406,54 @@ export default function StaffDashboard({
                           Approve review
                         </Button>
                         <Button
-                          disabled={pending !== null}
+                          disabled={
+                            pending !== null || review.status === "rejected"
+                          }
                           variant="outline"
                           onClick={() =>
                             moderate("reviews", review.id, "rejected")
                           }
                         >
-                          Reject
+                          {review.status === "published"
+                            ? "Unpublish review"
+                            : "Reject"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          colorPalette="red"
+                          disabled={pending !== null}
+                          onClick={async () => {
+                            if (
+                              !window.confirm(
+                                "Permanently delete this review and its photos? This cannot be undone.",
+                              )
+                            )
+                              return;
+                            setPending(review.id);
+                            try {
+                              await accountRequest(
+                                `/staff/reviews/${review.id}`,
+                                "DELETE",
+                              );
+                              notifySuccess("Review deleted");
+                              setRevision((value) => value + 1);
+                            } catch (err) {
+                              notifyError("Could not delete review", err);
+                            } finally {
+                              setPending(null);
+                            }
+                          }}
+                        >
+                          Delete review
                         </Button>
                       </Flex>
                     </Box>
                   ))}
                   <PaginationControls
                     page={currentReviewPage}
-                    total={reviews.length}
-                    pageSize={ADMIN_PAGE_SIZE}
-                    label="Pending reviews"
+                    total={reviewTotal}
+                    pageSize={25}
+                    label="Reviews"
                     onPageChange={setReviewPage}
                   />
                 </Stack>
@@ -767,9 +832,9 @@ export default function StaffDashboard({
                               user.email,
                               accountRoleLabel(user.role),
                               user.status,
-                              new Date(user.created_at).toLocaleDateString(),
+                              new Date(user.created_at).toLocaleString(),
                               user.last_login
-                                ? new Date(user.last_login).toLocaleDateString()
+                                ? new Date(user.last_login).toLocaleString()
                                 : "—",
                             ].map((value, index) => (
                               <td

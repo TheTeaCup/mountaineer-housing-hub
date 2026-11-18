@@ -173,7 +173,7 @@ export function createAccountRouter(deps: AccountDependencies) {
   router.get("/properties", async (_req, res) => {
     res.json(
       await deps.query(
-        "SELECT p.slug, p.name, a.name AS agency_name FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id WHERE p.status = 'published' ORDER BY p.name LIMIT 500",
+        "SELECT p.slug, p.name, p.agency_id, a.name AS agency_name FROM properties p LEFT JOIN agencies a ON a.id = p.agency_id WHERE p.status = 'published' ORDER BY p.name LIMIT 500",
       ),
     );
   });

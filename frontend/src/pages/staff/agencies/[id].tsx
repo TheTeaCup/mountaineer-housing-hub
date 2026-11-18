@@ -1,4 +1,5 @@
 import SEO from "@/components/seo";
+import AgencyActions from "@/components/staff/agency-actions";
 import { useAccount } from "@/components/ui/account-provider";
 import Input from "@/components/ui/form-input";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
@@ -231,6 +232,7 @@ export default function EditAgency({
                 </Button>
               </Stack>
             </form>
+            {profile.role === "staff" && <AgencyActions agency={agency} />}
           </Box>
         )}
       </Container>

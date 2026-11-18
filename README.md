@@ -91,3 +91,21 @@ The default search description describes housing in Boone, and social previews
 fall back to the existing home page background photo when no property photo is
 available. Run `npm run test:seo` in `frontend` for the metadata and server-loader
 checks.
+
+### Refresh AppalCART map data
+
+From `frontend`, run `npm run data:appalcart` to download the current GTFS feed,
+or `npm run data:appalcart -- /path/to/gtfs.zip` to use a local feed. The Node.js
+updater writes `frontend/src/data/appalcart.json`, preserving route shapes and
+stop associations while excluding Game Day and Night Owl services. Validate it
+with `npm run test:appalcart`. Requires Node.js 20 or newer.
+
+Map layer visibility and bus route selections are remembered in this browser.
+Enable bus routes and select multiple routes in the Map layers panel.
+
+Before deploying parking prices to an existing database, run `npm run db:parking`
+from `backend` (or apply migration `015_property_parking_prices.sql` once). The
+migration adds optional prices and notes; existing parking types remain intact.
+Map settings are saved on the current device and browser, including an empty bus
+route selection. Clear selects no routes; turning the bus layer off retains the
+selected routes for next time.

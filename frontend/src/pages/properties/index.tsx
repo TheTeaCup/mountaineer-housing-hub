@@ -239,6 +239,8 @@ export default function PropertiesList() {
                   { value: "", label: "Any parking type" },
                   { value: "free", label: "Free parking" },
                   { value: "monthly", label: "Monthly fee" },
+                  { value: "yearly", label: "Yearly fee" },
+                  { value: "semester", label: "Per-semester fee" },
                   { value: "one_time", label: "One-time fee" },
                 ]}
               />

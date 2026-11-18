@@ -29,12 +29,18 @@ export default function ReviewForm() {
   const { profile } = useAccount();
   const terms = useSubmissionTerms(!!session);
   const [properties, setProperties] = useState<
-    { slug: string; name: string; agency_name?: string | null }[]
+    {
+      slug: string;
+      name: string;
+      agency_id: number | null;
+      agency_name?: string | null;
+    }[]
   >([]);
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [rating, setRating] = useState(0);
   const [propertySlug, setPropertySlug] = useState("");
+  const [agencyId, setAgencyId] = useState("all");
   const [recommendation, setRecommendation] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [compressingPhotos, setCompressingPhotos] = useState(false);
@@ -48,7 +54,12 @@ export default function ReviewForm() {
     if (!session) return;
     let active = true;
     accountRequest<
-      { slug: string; name: string; agency_name?: string | null }[]
+      {
+        slug: string;
+        name: string;
+        agency_id: number | null;
+        agency_name?: string | null;
+      }[]
     >("/account/properties")
       .then((data) => {
         if (active) setProperties(data);
@@ -63,6 +74,31 @@ export default function ReviewForm() {
       active = false;
     };
   }, [session]);
+  useEffect(() => {
+    if (!requestedProperty || !properties.length) return;
+    const property = properties.find((item) => item.slug === requestedProperty);
+    if (property)
+      setAgencyId(
+        property.agency_id === null ? "none" : String(property.agency_id),
+      );
+  }, [requestedProperty, properties]);
+  const visibleProperties = properties.filter(
+    (property) =>
+      agencyId === "all" ||
+      (agencyId === "none"
+        ? property.agency_id === null
+        : String(property.agency_id) === agencyId),
+  );
+  const agencyOptions = Array.from(
+    new Map(
+      properties
+        .filter((property) => property.agency_id !== null)
+        .map((property) => [
+          String(property.agency_id),
+          property.agency_name || "Unnamed agency",
+        ]),
+    ).entries(),
+  ).sort((a, b) => a[1].localeCompare(b[1]));
   if (loading || (session && !profile)) return <FormPageSkeleton />;
   if (!session)
     return (
@@ -168,6 +204,7 @@ export default function ReviewForm() {
             terms.setAgreed(false);
             setRating(0);
             setPropertySlug(requestedProperty);
+            setAgencyId("all");
             setRecommendation("");
             setPhotos([]);
           } catch (err) {
@@ -178,6 +215,21 @@ export default function ReviewForm() {
         }}
       >
         <Stack gap={6}>
+          <FormSelect
+            label="Rental agency"
+            value={agencyId}
+            disabled={propertiesLoading || pending}
+            onValueChange={(value) => {
+              setAgencyId(value);
+              setPropertySlug("");
+            }}
+            options={[
+              { value: "all", label: "All apartments / not sure" },
+              { value: "none", label: "No listed agency" },
+              ...agencyOptions.map(([value, label]) => ({ value, label })),
+            ]}
+            helperText="Choose a rental agency to see its apartments, then select where you lived."
+          />
           <Box>
             <FormSelect
               name="slug"
@@ -187,7 +239,7 @@ export default function ReviewForm() {
               placeholder="Select an apartment"
               value={propertySlug}
               onValueChange={setPropertySlug}
-              options={properties.map((property) => ({
+              options={visibleProperties.map((property) => ({
                 value: property.slug,
                 label: property.name,
                 description: property.agency_name
@@ -198,8 +250,8 @@ export default function ReviewForm() {
             {propertiesLoading ? (
               <Text>Loading apartments…</Text>
             ) : (
-              !properties.length && (
-                <Text>No apartments are available for reviews yet.</Text>
+              !visibleProperties.length && (
+                <Text>No apartments are available for this selection.</Text>
               )
             )}
           </Box>

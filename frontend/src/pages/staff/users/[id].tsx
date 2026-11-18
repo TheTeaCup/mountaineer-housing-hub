@@ -42,6 +42,11 @@ interface UserAccessResult {
   properties: EditableProperty[];
   assignedAgencies: { id: number; name: string }[];
   agencies: { id: number; name: string }[];
+  legalAcceptances: {
+    terms_version: string;
+    privacy_version: string;
+    accepted_at: string;
+  }[];
 }
 
 export default function StaffUserDetailPage() {
@@ -160,8 +165,31 @@ export default function StaffUserDetailPage() {
                 <Text mt={2}>{result.user.email}</Text>
                 <Text color="var(--site-muted)" mt={1}>
                   {accountRoleLabel(result.user.role)} · {result.user.status} ·
-                  joined {new Date(result.user.created_at).toLocaleDateString()}
+                  joined {new Date(result.user.created_at).toLocaleString()}
                 </Text>
+                <Text mt={2}>
+                  Last sign-in:{" "}
+                  {result.user.last_login
+                    ? new Date(result.user.last_login).toLocaleString()
+                    : "Never"}
+                </Text>
+                <Heading as="h3" size="md" mt={5} mb={2}>
+                  Policy agreements
+                </Heading>
+                {result.legalAcceptances.length ? (
+                  result.legalAcceptances.map((acceptance) => (
+                    <Text
+                      key={`${acceptance.terms_version}-${acceptance.privacy_version}`}
+                      fontSize="sm"
+                    >
+                      Terms {acceptance.terms_version} · Privacy{" "}
+                      {acceptance.privacy_version} · Accepted{" "}
+                      {new Date(acceptance.accepted_at).toLocaleString()}
+                    </Text>
+                  ))
+                ) : (
+                  <Text>No saved agreement yet.</Text>
+                )}
               </Box>
 
               {result.user.role === "staff" ? (

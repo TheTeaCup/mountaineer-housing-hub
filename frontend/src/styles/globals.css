@@ -102,3 +102,44 @@ body {
   background: var(--site-muted-surface);
   font-weight: 500;
 }
+
+/* Native controls also need explicit theme colors in Chakra's unstyled setup. */
+.submission-form :is(select, textarea) {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--site-border);
+  border-radius: 12px;
+  background: var(--site-control);
+  color: var(--site-fg);
+}
+.submission-form select {
+  padding-right: 40px;
+}
+.submission-form option {
+  background: var(--site-surface);
+  color: var(--site-fg);
+}
+.submission-form textarea {
+  resize: vertical;
+}
+.submission-form :is(select, textarea):focus-visible {
+  outline: 2px solid var(--site-accent-fg);
+  outline-offset: 2px;
+}
+.submission-form textarea::placeholder {
+  color: var(--site-muted);
+}
+@media (max-width: 640px) {
+  .submission-form :is(input:not([type="checkbox"]), select, textarea),
+  [data-scope="select"][data-part="trigger"] {
+    font-size: 16px;
+  }
+  [data-scope="select"][data-part="content"] {
+    max-width: calc(100vw - 32px);
+  }
+  [data-scope="select"] [data-part="item-text"] {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

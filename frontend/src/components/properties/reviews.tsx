@@ -1,15 +1,23 @@
 import { useAccount } from "@/components/ui/account-provider";
 import PaginationControls from "@/components/ui/pagination-controls";
+import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import UserAvatar from "@/components/ui/user-avatar";
 import { accountRequest, type AccountProfile } from "@/utils/api/account";
 import { Box, Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useEffect, useState } from "react";
+import { FiTrash2 } from "react-icons/fi";
 import ReviewPhotoGrid, { type ReviewPhoto } from "./review-photo-grid";
 
 const PAGE_SIZE = 5;
 
-export default function PropertyReviews({ slug }: { slug: string }) {
+export default function PropertyReviews({
+  slug,
+  onChange,
+}: {
+  slug: string;
+  onChange?: () => void;
+}) {
   const { profile } = useAccount();
   const [reviews, setReviews] = useState<
     {
@@ -23,6 +31,7 @@ export default function PropertyReviews({ slug }: { slug: string }) {
       photos: ReviewPhoto[];
     }[]
   >([]);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -104,6 +113,42 @@ export default function PropertyReviews({ slug }: { slug: string }) {
                 {review.body}
               </Text>
               <ReviewPhotoGrid photos={review.photos} />
+              {profile?.role === "staff" && (
+                <Button
+                  mt={4}
+                  minH="44px"
+                  variant="outline"
+                  colorPalette="red"
+                  disabled={deleting !== null}
+                  loading={deleting === review.id}
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Permanently delete this review and its photos? This cannot be undone.",
+                      )
+                    )
+                      return;
+                    setDeleting(review.id);
+                    try {
+                      await accountRequest(
+                        `/staff/reviews/${review.id}`,
+                        "DELETE",
+                      );
+                      setReviews((current) =>
+                        current.filter((item) => item.id !== review.id),
+                      );
+                      notifySuccess("Review deleted");
+                      onChange?.();
+                    } catch (error) {
+                      notifyError("Could not delete review", error);
+                    } finally {
+                      setDeleting(null);
+                    }
+                  }}
+                >
+                  <FiTrash2 aria-hidden="true" /> Delete review
+                </Button>
+              )}
             </Box>
           ))}
           <PaginationControls

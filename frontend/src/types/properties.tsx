@@ -19,7 +19,9 @@ export interface Property {
   latitude: number | null;
   longitude: number | null;
   bus_route_ids?: string[];
-  parking_type?: "free" | "monthly" | "one_time" | null;
+  parking_type?: "free" | "monthly" | "yearly" | "semester" | "one_time" | null;
+  parking_fee?: number | null;
+  parking_notes?: string | null;
   website_url: string | null;
   phone: string | null;
   agency: {

@@ -1,5 +1,6 @@
 import { useAccount } from "@/components/ui/account-provider";
 import { useAuth } from "@/components/ui/auth-provider";
+import Input from "@/components/ui/form-input";
 import { FormPageSkeleton } from "@/components/ui/page-skeletons";
 import SignInRequired from "@/components/ui/sign-in-required";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
@@ -9,7 +10,6 @@ import {
   Button,
   Field,
   Heading,
-  Input,
   NativeSelect,
   Stack,
   Text,
@@ -115,6 +115,7 @@ export default function ApartmentForm() {
       <Box
         display={notice ? "none" : undefined}
         as="form"
+        className="submission-form"
         onSubmit={async (e) => {
           e.preventDefault();
           if (!terms.ready) return;

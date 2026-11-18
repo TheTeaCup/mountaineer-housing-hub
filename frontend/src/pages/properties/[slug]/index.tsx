@@ -30,6 +30,14 @@ import {
 import type { GetServerSideProps } from "next";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
+import {
+  FiColumns,
+  FiEdit2,
+  FiExternalLink,
+  FiMapPin,
+  FiMessageSquare,
+  FiPhone,
+} from "react-icons/fi";
 
 import { accountRequest } from "@/utils/api/account";
 import { API_URL } from "@/utils/api/auth";
@@ -195,25 +203,77 @@ export default function PropertyPage({
             <PropertyDetailSkeleton />
           ) : (
             <>
-              <Heading as="h1" mt={6} mb={3}>
+              <Heading
+                as="h1"
+                mt={6}
+                mb={3}
+                fontSize={{ base: "2rem", md: "3rem" }}
+                lineHeight="1.12"
+                letterSpacing="-0.035em"
+                fontWeight="bold"
+                color="var(--site-heading)"
+              >
                 {property.name}
               </Heading>
-              <Text textTransform="capitalize">
+              <Text
+                textTransform="uppercase"
+                fontSize="xs"
+                letterSpacing="0.12em"
+                fontWeight="bold"
+                color="var(--site-accent-fg)"
+                mb={2}
+              >
                 {propertyTypeLabel(property.property_type)}
               </Text>
-              <Text mb={5}>{property.address}</Text>
-              <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={7}>
-                <Stack gap={7}>
+              <Text
+                display="flex"
+                alignItems="start"
+                gap={2}
+                mb={7}
+                color="var(--site-muted)"
+                fontSize={{ base: "sm", md: "md" }}
+              >
+                <FiMapPin
+                  aria-hidden="true"
+                  style={{ flexShrink: 0, marginTop: 4 }}
+                />
+                {property.address}
+              </Text>
+              <Grid
+                templateColumns={{
+                  base: "minmax(0, 1fr)",
+                  lg: "minmax(0, 2fr) minmax(0, 1fr)",
+                }}
+                gap={{ base: 5, md: 7 }}
+              >
+                <Stack gap={7} minW={0}>
                   <PropertyPhotoGallery
                     key={property.slug}
                     photos={property.photos}
                     name={property.name}
                   />
-                  <Box>
-                    <Heading as="h2" size="lg" mb={3}>
+                  <Box
+                    bg="var(--site-surface)"
+                    borderWidth="1px"
+                    borderColor="var(--site-border)"
+                    borderRadius="xl"
+                    p={{ base: 5, md: 7 }}
+                  >
+                    <Heading
+                      as="h2"
+                      fontSize="xl"
+                      color="var(--site-heading)"
+                      mb={4}
+                    >
                       About this property
                     </Heading>
-                    <Text whiteSpace="pre-wrap">
+                    <Text
+                      whiteSpace="pre-wrap"
+                      fontSize="md"
+                      lineHeight="1.85"
+                      maxW="68ch"
+                      overflowWrap="anywhere"
+                    >
                       {property.description ||
                         "A description has not been provided yet."}
                     </Text>
@@ -226,6 +286,7 @@ export default function PropertyPage({
                   borderColor="var(--site-border)"
                   borderRadius="xl"
                   alignSelf="start"
+                  minW={0}
                 >
                   <Heading as="h2" size="lg" mb={3}>
                     Interested in this property?
@@ -243,6 +304,10 @@ export default function PropertyPage({
                     css={{
                       "& .chakra-button": {
                         width: "100%",
+                        minHeight: "48px",
+                        height: "auto",
+                        padding: "12px 16px",
+                        whiteSpace: "normal",
                         borderRadius: "md",
                         borderColor: "var(--site-muted)",
                         color: "var(--site-heading)",
@@ -260,6 +325,15 @@ export default function PropertyPage({
                       },
                     }}
                   >
+                    <Text
+                      fontSize="xs"
+                      fontWeight="bold"
+                      textTransform="uppercase"
+                      letterSpacing="wide"
+                      color="var(--site-muted)"
+                    >
+                      Contact &amp; availability
+                    </Text>
                     {website && (
                       <Button asChild data-primary="">
                         <a
@@ -280,7 +354,7 @@ export default function PropertyPage({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Visit property website
+                          <FiExternalLink aria-hidden="true" /> Property website
                         </a>
                       </Button>
                     )}
@@ -304,12 +378,18 @@ export default function PropertyPage({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Visit rental agency website
+                          <FiExternalLink aria-hidden="true" /> Agency website
                         </a>
                       </Button>
                     )}
                     {contactPhone && (
-                      <Text>
+                      <Text
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        minH="44px"
+                      >
+                        <FiPhone aria-hidden="true" />
                         {propertyPhone ? "Phone" : "Agency phone"}:{" "}
                         <a
                           href={phoneHref(contactPhone)}
@@ -321,12 +401,25 @@ export default function PropertyPage({
                         </a>
                       </Text>
                     )}
+                    <Text
+                      fontSize="xs"
+                      fontWeight="bold"
+                      textTransform="uppercase"
+                      letterSpacing="wide"
+                      color="var(--site-muted)"
+                      mt={3}
+                      pt={4}
+                      borderTopWidth="1px"
+                      borderColor="var(--site-border)"
+                    >
+                      Explore &amp; share
+                    </Text>
                     <FavoriteButton slug={property.slug} />
                     <Button asChild variant="outline">
                       <NextLink
                         href={`/compare?properties=${encodeURIComponent(property.slug)}`}
                       >
-                        Compare apartments
+                        <FiColumns aria-hidden="true" /> Compare this apartment
                       </NextLink>
                     </Button>
                     {hasCoordinates && (
@@ -334,7 +427,7 @@ export default function PropertyPage({
                         <NextLink
                           href={`/map?property=${encodeURIComponent(property.slug)}`}
                         >
-                          View on map
+                          <FiMapPin aria-hidden="true" /> Find on map
                         </NextLink>
                       </Button>
                     )}
@@ -343,13 +436,15 @@ export default function PropertyPage({
                         <NextLink
                           href={`/submit?property=${encodeURIComponent(property.slug)}`}
                         >
-                          Write a review
+                          <FiMessageSquare aria-hidden="true" /> Write a review
                         </NextLink>
                       </Button>
                     )}
                     {editHref && (
                       <Button asChild variant="outline">
-                        <NextLink href={editHref}>Edit property</NextLink>
+                        <NextLink href={editHref}>
+                          <FiEdit2 aria-hidden="true" /> Edit property
+                        </NextLink>
                       </Button>
                     )}
                   </Stack>
@@ -368,10 +463,35 @@ export default function PropertyPage({
                           {
                             free: "Free parking",
                             monthly: "Monthly parking fee",
+                            yearly: "Yearly parking fee",
+                            semester: "Per-semester parking fee",
                             one_time: "One-time parking fee",
                           }[property.parking_type]
                         }
                       </Text>
+                      {property.parking_type !== "free" &&
+                        property.parking_fee != null && (
+                          <Text fontWeight="bold" mt={1}>
+                            {new Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(property.parking_fee)}
+                            {
+                              {
+                                monthly: "/month",
+                                yearly: "/year",
+                                semester: "/semester",
+                                one_time: " one time",
+                                free: "",
+                              }[property.parking_type]
+                            }
+                          </Text>
+                        )}
+                      {property.parking_notes && (
+                        <Text mt={2} fontSize="sm" color="var(--site-muted)">
+                          {property.parking_notes}
+                        </Text>
+                      )}
                     </Box>
                   )}
                   {busRouteNames.length > 0 && (
@@ -462,8 +582,18 @@ export default function PropertyPage({
                 <CostCalculator
                   key={`cost-${property.slug}`}
                   initialRent={startingRent}
+                  initialParkingType={property.parking_type}
+                  initialParkingFee={property.parking_fee}
                 />
-                <PropertyReviews key={property.slug} slug={property.slug} />
+                <PropertyReviews
+                  key={property.slug}
+                  slug={property.slug}
+                  onChange={() =>
+                    void router.replace(router.asPath, undefined, {
+                      scroll: false,
+                    })
+                  }
+                />
               </Stack>
             </>
           )}

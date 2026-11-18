@@ -8,30 +8,15 @@ import { useColorMode } from "@/components/ui/color-mode";
 import { useProperties } from "@/hooks/use-properties";
 import { mapLocations } from "@/utils/api/properties";
 import { registerPMTiles } from "@/utils/pmtiles";
-import {
-  Box,
-  Button,
-  createListCollection,
-  Flex,
-  IconButton,
-  Portal,
-  Select,
-  Switch,
-  Text,
-} from "@chakra-ui/react";
-import maplibregl from "maplibre-gl";
+import { Box, Button, Flex, Switch, Text } from "@chakra-ui/react";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import protomaps from "protomaps-themes-base";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LuChevronDown, LuChevronUp } from "react-icons/lu";
+import { LuChevronDown, LuChevronUp, LuLayers } from "react-icons/lu";
 
-const routeOptions = createListCollection({
-  items: [
-    { value: "all", label: "All AppalCART routes" },
-    ...busRoutes.map(({ id, name }) => ({ value: id, label: name })),
-  ],
-});
+const MAP_PREFERENCES_KEY = "mhh:map-layers:v1";
 
 const apartmentIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="9" y="5" width="30" height="38" rx="2" fill="#ffc72c" stroke="#111111" stroke-width="4"/><path d="M16 13h5v5h-5zm11 0h5v5h-5zM16 23h5v5h-5zm11 0h5v5h-5z" fill="#111111"/><path d="M20 43V33h8v10" fill="#ffffff" stroke="#111111" stroke-width="3"/></svg>`;
 const townhomeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><path d="M4 20L13 9l11 11L35 9l9 11v23H4z" fill="#2563eb" stroke="#111111" stroke-width="4" stroke-linejoin="round"/><path d="M24 20v23M10 28h7v6h-7zm21 0h7v6h-7z" fill="#ffffff" stroke="#111111" stroke-width="3"/><path d="M11 43V36h6v7m14 0V36h6v7" fill="#ffffff" stroke="#111111" stroke-width="3"/></svg>`;
@@ -50,12 +35,67 @@ export default function MapComponent({
   const { colorMode } = useColorMode();
   const { properties, loading, error, retry } = useProperties("", 500);
   const [mapError, setMapError] = useState("");
-  const [keyOpen, setKeyOpen] = useState(true);
+  const [keyOpen, setKeyOpen] = useState(false);
   const [showComplexes, setShowComplexes] = useState(true);
   const [showTownhomes, setShowTownhomes] = useState(true);
   const [showBusRoutes, setShowBusRoutes] = useState(false);
-  const [busRoute, setBusRoute] = useState("all");
-  const busSelection = showBusRoutes ? busRoute : "";
+  const [selectedRoutes, setSelectedRoutes] = useState<string[]>(() =>
+    busRoutes.map((route) => route.id),
+  );
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(MAP_PREFERENCES_KEY) || "null",
+      );
+      if (saved && typeof saved === "object") {
+        if (typeof saved.showComplexes === "boolean")
+          setShowComplexes(saved.showComplexes);
+        if (typeof saved.showTownhomes === "boolean")
+          setShowTownhomes(saved.showTownhomes);
+        if (typeof saved.showBusRoutes === "boolean")
+          setShowBusRoutes(saved.showBusRoutes);
+        if (typeof saved.keyOpen === "boolean") setKeyOpen(saved.keyOpen);
+        if (Array.isArray(saved.selectedRoutes))
+          setSelectedRoutes(
+            busRoutes
+              .filter((route) => saved.selectedRoutes.includes(route.id))
+              .map((route) => route.id),
+          );
+      }
+    } catch {
+      /* A blocked store or old preference format must not prevent map use. */
+    }
+    setPreferencesLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!preferencesLoaded) return;
+    try {
+      localStorage.setItem(
+        MAP_PREFERENCES_KEY,
+        JSON.stringify({
+          showComplexes,
+          showTownhomes,
+          showBusRoutes,
+          selectedRoutes,
+          keyOpen,
+        }),
+      );
+    } catch {
+      /* Browsing with storage disabled still supports temporary preferences. */
+    }
+  }, [
+    preferencesLoaded,
+    showComplexes,
+    showTownhomes,
+    showBusRoutes,
+    selectedRoutes,
+    keyOpen,
+  ]);
+  const busSelection = useMemo(
+    () => (showBusRoutes ? selectedRoutes : []),
+    [showBusRoutes, selectedRoutes],
+  );
   const busSelectionRef = useRef(busSelection);
   const stopPopup = useRef<maplibregl.Popup | null>(null);
   useEffect(() => {
@@ -63,8 +103,14 @@ export default function MapComponent({
     stopPopup.current?.remove();
     const map = mapRef.current;
     for (const layer of busLayers) {
-      if (map?.getLayer(layer))
+      if (map?.getLayer(layer)) {
         map.setFilter(layer, busLayerFilter(layer, busSelection));
+        map.setLayoutProperty(
+          layer,
+          "visibility",
+          busSelection.length ? "visible" : "none",
+        );
+      }
     }
   }, [busSelection]);
   const mapped = useMemo(() => mapLocations(properties), [properties]);
@@ -262,29 +308,37 @@ export default function MapComponent({
       <Box ref={containerRef} w="100%" h="100%" />
       <Box
         position="absolute"
-        top={4}
-        left={4}
-        maxW="min(340px, calc(100% - 80px))"
+        top={{ base: 3, md: 4 }}
+        left={{ base: 3, md: 4 }}
+        w={keyOpen ? { base: "calc(100% - 76px)", md: "320px" } : "auto"}
+        maxW="340px"
+        maxH="calc(100% - 24px)"
+        overflowY="auto"
+        borderWidth="1px"
+        borderColor="var(--site-border)"
         bg="var(--site-surface)"
         color="var(--site-fg)"
         borderRadius="lg"
         p={3}
         boxShadow="md"
       >
-        <Flex align="center" justify="space-between" gap={3}>
-          <Text fontWeight="semibold">Map key</Text>
-          <IconButton
-            aria-label={keyOpen ? "Minimize map key" : "Expand map key"}
-            aria-expanded={keyOpen}
-            aria-controls="map-key-content"
-            title={keyOpen ? "Minimize map key" : "Expand map key"}
-            size="xs"
-            variant="ghost"
-            onClick={() => setKeyOpen((open) => !open)}
-          >
-            {keyOpen ? <LuChevronUp /> : <LuChevronDown />}
-          </IconButton>
-        </Flex>
+        <Button
+          w="100%"
+          minH="44px"
+          variant="ghost"
+          justifyContent="space-between"
+          color="var(--site-fg)"
+          px={1}
+          aria-expanded={keyOpen}
+          aria-controls="map-key-content"
+          onClick={() => setKeyOpen((open) => !open)}
+        >
+          <LuLayers aria-hidden="true" /> Map layers
+          <Text as="span" fontSize="xs" color="var(--site-muted)">
+            {visible.length} places
+          </Text>
+          {keyOpen ? <LuChevronUp /> : <LuChevronDown />}
+        </Button>
         {keyOpen && (
           <Box id="map-key-content" mt={2}>
             {loading ? (
@@ -317,17 +371,19 @@ export default function MapComponent({
               >
                 <Flex as="li" align="center" gap={2}>
                   <Box
-                    w="12px"
-                    h="12px"
-                    bg="#ffc72c"
-                    border="2px solid #111111"
-                    borderRadius="2px"
+                    w="28px"
+                    h="28px"
+                    flexShrink={0}
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: apartmentIcon }}
+                    css={{ "& svg": { width: "100%", height: "100%" } }}
                   />
                   <Switch.Root
                     size="sm"
                     checked={showComplexes}
                     onCheckedChange={({ checked }) => setShowComplexes(checked)}
                     flex="1"
+                    minH="44px"
                     justifyContent="space-between"
                   >
                     <Switch.HiddenInput />
@@ -339,17 +395,19 @@ export default function MapComponent({
                 </Flex>
                 <Flex as="li" align="center" gap={2}>
                   <Box
-                    w="12px"
-                    h="12px"
-                    bg="#2563eb"
-                    border="2px solid #111111"
-                    transform="rotate(45deg)"
+                    w="28px"
+                    h="28px"
+                    flexShrink={0}
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: townhomeIcon }}
+                    css={{ "& svg": { width: "100%", height: "100%" } }}
                   />
                   <Switch.Root
                     size="sm"
                     checked={showTownhomes}
                     onCheckedChange={({ checked }) => setShowTownhomes(checked)}
                     flex="1"
+                    minH="44px"
                     justifyContent="space-between"
                   >
                     <Switch.HiddenInput />
@@ -392,6 +450,7 @@ export default function MapComponent({
                 onCheckedChange={({ checked }) => setShowBusRoutes(checked)}
                 size="sm"
                 w="100%"
+                minH="44px"
                 justifyContent="space-between"
               >
                 <Switch.HiddenInput />
@@ -402,57 +461,95 @@ export default function MapComponent({
               </Switch.Root>
               {showBusRoutes && (
                 <>
-                  <Select.Root
-                    collection={routeOptions}
-                    size="sm"
-                    w="100%"
-                    value={[busRoute]}
-                    onValueChange={({ value }) =>
-                      setBusRoute(value[0] ?? "all")
-                    }
-                    positioning={{ sameWidth: true, gutter: 6 }}
-                  >
-                    <Select.Control>
-                      <Select.Trigger
-                        aria-label="AppalCART route"
-                        bg="var(--site-muted-surface)"
-                        borderColor="var(--site-border)"
-                        borderRadius="md"
-                        color="var(--site-heading)"
-                      >
-                        <Select.ValueText />
-                        <Select.Indicator>
-                          <LuChevronDown />
-                        </Select.Indicator>
-                      </Select.Trigger>
-                    </Select.Control>
-                    <Portal>
-                      <Select.Positioner>
-                        <Select.Content
-                          bg="var(--site-surface)"
-                          color="var(--site-fg)"
-                          borderWidth="1px"
-                          borderColor="var(--site-border)"
-                          borderRadius="lg"
-                          maxH="min(16rem, var(--available-height, 16rem))"
-                          overflowY="auto"
-                          p={1}
+                  <Box w="100%">
+                    <Flex
+                      align="center"
+                      justify="space-between"
+                      gap={2}
+                      wrap="wrap"
+                      mb={2}
+                    >
+                      <Text fontSize="sm" role="status">
+                        {selectedRoutes.length} routes selected
+                      </Text>
+                      <Flex gap={1}>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          minH="44px"
+                          color="var(--site-accent-fg)"
+                          onClick={() =>
+                            setSelectedRoutes(
+                              busRoutes.map((route) => route.id),
+                            )
+                          }
                         >
-                          {routeOptions.items.map((item) => (
-                            <Select.Item
-                              key={item.value}
-                              item={item}
-                              borderRadius="md"
-                              _highlighted={{ bg: "var(--site-muted-surface)" }}
-                            >
-                              <Select.ItemText>{item.label}</Select.ItemText>
-                              <Select.ItemIndicator color="var(--site-accent-fg)" />
-                            </Select.Item>
-                          ))}
-                        </Select.Content>
-                      </Select.Positioner>
-                    </Portal>
-                  </Select.Root>
+                          Select all
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          minH="44px"
+                          color="var(--site-fg)"
+                          onClick={() => setSelectedRoutes([])}
+                        >
+                          Clear
+                        </Button>
+                      </Flex>
+                    </Flex>
+                    <Box
+                      as="fieldset"
+                      maxH="220px"
+                      overflowY="auto"
+                      borderWidth="1px"
+                      borderColor="var(--site-border)"
+                      borderRadius="lg"
+                      p={2}
+                    >
+                      <Box as="legend" px={1} fontSize="sm">
+                        Choose bus routes
+                      </Box>
+                      {busRoutes.map((route) => (
+                        <Box
+                          as="label"
+                          key={route.id}
+                          display="flex"
+                          alignItems="center"
+                          gap={3}
+                          minH="44px"
+                          px={2}
+                          cursor="pointer"
+                          borderRadius="md"
+                          _hover={{ bg: "var(--site-control-hover)" }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedRoutes.includes(route.id)}
+                            onChange={(event) =>
+                              setSelectedRoutes((current) =>
+                                event.target.checked
+                                  ? [...current, route.id]
+                                  : current.filter((id) => id !== route.id),
+                              )
+                            }
+                            style={{
+                              width: 18,
+                              height: 18,
+                              accentColor: "#ffc72c",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Text fontSize="sm">{route.name}</Text>
+                        </Box>
+                      ))}
+                    </Box>
+                    {!selectedRoutes.length && (
+                      <Text fontSize="xs" mt={2}>
+                        No bus routes selected. Choose a route to show it on the
+                        map.
+                      </Text>
+                    )}
+                  </Box>
                   <Text fontSize="xs" color="var(--site-muted)">
                     Select a stop to see which routes serve it.
                   </Text>

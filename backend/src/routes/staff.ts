@@ -1,3 +1,4 @@
+import { parkingInput } from "./parking.js";
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import {
@@ -368,27 +369,37 @@ export function createStaffRouter(deps: AccountDependencies) {
       res.status(404).json({ message: "User not found." });
       return;
     }
-    const [assignedProperties, properties, assignedAgencies, agencies] =
-      await Promise.all([
-        deps.query(
-          "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
-          [req.params.id],
-        ),
-        deps.query(
-          "SELECT id, name, slug, status FROM properties ORDER BY name LIMIT 500",
-        ),
-        deps.query(
-          "SELECT a.id, a.name FROM agency_editors ae JOIN agencies a ON a.id = ae.agency_id WHERE ae.user_id = ? ORDER BY a.name",
-          [req.params.id],
-        ),
-        deps.query("SELECT id, name FROM agencies ORDER BY name"),
-      ]);
+    const [
+      assignedProperties,
+      properties,
+      assignedAgencies,
+      agencies,
+      legalAcceptances,
+    ] = await Promise.all([
+      deps.query(
+        "SELECT p.id, p.name, p.slug, p.status, pe.created_at AS assigned_at FROM property_editors pe JOIN properties p ON p.id = pe.property_id WHERE pe.user_id = ? ORDER BY p.name",
+        [req.params.id],
+      ),
+      deps.query(
+        "SELECT id, name, slug, status FROM properties ORDER BY name LIMIT 500",
+      ),
+      deps.query(
+        "SELECT a.id, a.name FROM agency_editors ae JOIN agencies a ON a.id = ae.agency_id WHERE ae.user_id = ? ORDER BY a.name",
+        [req.params.id],
+      ),
+      deps.query("SELECT id, name FROM agencies ORDER BY name"),
+      deps.query(
+        "SELECT terms_version, privacy_version, accepted_at FROM user_legal_acceptances WHERE user_id = ? ORDER BY accepted_at DESC",
+        [req.params.id],
+      ),
+    ]);
     res.json({
       user: users[0],
       assignedProperties,
       properties,
       assignedAgencies,
       agencies,
+      legalAcceptances,
     });
   });
   router.put("/users/:id/properties/:propertyId", async (req, res) => {
@@ -443,11 +454,31 @@ export function createStaffRouter(deps: AccountDependencies) {
     }
     res.json({ assigned: false });
   });
-  router.get("/reviews", async (_req, res) => {
-    const reviews = await deps.query<{ id: number } & Record<string, unknown>>(
-      "SELECT r.id, r.rating, r.body, r.pros, r.cons, r.recommendation, r.created_at, p.name, u.username FROM reviews r JOIN properties p ON p.id = r.property_id LEFT JOIN user_profiles u ON u.user_id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at LIMIT 100",
+  router.get("/reviews", async (req, res) => {
+    const status = String(req.query.status ?? "pending");
+    if (!["all", "pending", "published", "rejected"].includes(status)) {
+      res.status(400).json({ message: "Choose a valid review status." });
+      return;
+    }
+    const page = Math.max(
+      1,
+      Math.min(100000, Math.floor(Number(req.query.page) || 1)),
     );
-    res.json(await attachReviewPhotos(deps, reviews, deps.backendOrigin));
+    const where = status === "all" ? "" : "WHERE r.status = ?";
+    const params = status === "all" ? [] : [status];
+    const reviews = await deps.query<{ id: number } & Record<string, unknown>>(
+      `SELECT r.id, r.rating, r.body, r.pros, r.cons, r.recommendation, r.status, r.created_at, p.name, p.slug, u.username FROM reviews r JOIN properties p ON p.id = r.property_id LEFT JOIN user_profiles u ON u.user_id = r.user_id ${where} ORDER BY r.created_at, r.id LIMIT 25 OFFSET ?`,
+      [...params, (page - 1) * 25],
+    );
+    const counts = await deps.query<{ total: number }>(
+      `SELECT COUNT(*) AS total FROM reviews r ${where}`,
+      params,
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      reviews: await attachReviewPhotos(deps, reviews, deps.backendOrigin),
+      total: Number(counts[0]?.total ?? 0),
+    });
   });
   router.patch("/reviews/:id", async (req, res) => {
     if (!["published", "rejected"].includes(req.body?.status)) {
@@ -455,16 +486,29 @@ export function createStaffRouter(deps: AccountDependencies) {
       return;
     }
     const result = await deps.execute(
-      "UPDATE reviews SET status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ? AND status = 'pending'",
+      "UPDATE reviews SET status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
       [req.body.status, req.params.id],
     );
     if (!result.affectedRows) {
-      res.status(409).json({
-        message: "Submission was already reviewed or no longer exists.",
-      });
+      res.status(404).json({ message: "Review not found." });
       return;
     }
     res.json({ updated: true });
+  });
+  router.delete("/reviews/:id", async (req, res) => {
+    const photos = await deps.query<{ image_url: string }>(
+      "SELECT image_url FROM review_photos WHERE review_id = ?",
+      [req.params.id],
+    );
+    const result = await deps.execute("DELETE FROM reviews WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (!result.affectedRows) {
+      res.status(404).json({ message: "Review not found." });
+      return;
+    }
+    await deleteImages(photos.map((photo) => photo.image_url));
+    res.json({ deleted: true });
   });
   router.get("/apartments", async (_req, res) => {
     res.json(
@@ -486,6 +530,89 @@ export function createStaffRouter(deps: AccountDependencies) {
          ORDER BY a.name LIMIT 500`,
       ),
     );
+  });
+  // Agency lifecycle actions are restricted to staff, even for assigned editors.
+  router.post("/agencies/:id/transfer", async (req, res) => {
+    if (!res.locals.isStaff) {
+      res.status(403).json({ message: "Staff access is required." });
+      return;
+    }
+    const sourceId = Number(req.params.id);
+    const targetId = Number(req.body?.targetAgencyId);
+    const mode = req.body?.mode;
+    if (
+      !Number.isSafeInteger(sourceId) ||
+      sourceId <= 0 ||
+      !Number.isSafeInteger(targetId) ||
+      targetId <= 0 ||
+      sourceId === targetId ||
+      !["reassign", "merge"].includes(mode)
+    ) {
+      res.status(400).json({
+        message: "Choose a different destination agency and a valid action.",
+      });
+      return;
+    }
+    const result = await deps.transaction(async (db) => {
+      const agencies = await db.query<{ id: number }>(
+        "SELECT id FROM agencies WHERE id IN (?, ?) ORDER BY id FOR UPDATE",
+        [sourceId, targetId],
+      );
+      if (agencies.length !== 2) return null;
+      const moved = await db.execute(
+        "UPDATE properties SET agency_id = ? WHERE agency_id = ?",
+        [targetId, sourceId],
+      );
+      await db.execute(
+        "UPDATE apartment_submissions SET agency_id = ? WHERE agency_id = ?",
+        [targetId, sourceId],
+      );
+      // Do not broaden source editors' access to the destination agency.
+      if (mode === "merge")
+        await db.execute("DELETE FROM agencies WHERE id = ?", [sourceId]);
+      return { moved: moved.affectedRows, merged: mode === "merge" };
+    });
+    if (!result) {
+      res
+        .status(404)
+        .json({ message: "Source or destination agency not found." });
+      return;
+    }
+    res.json(result);
+  });
+  router.delete("/agencies/:id", async (req, res) => {
+    if (!res.locals.isStaff) {
+      res.status(403).json({ message: "Staff access is required." });
+      return;
+    }
+    const outcome = await deps.transaction(async (db) => {
+      const agency = await db.query(
+        "SELECT id FROM agencies WHERE id = ? FOR UPDATE",
+        [req.params.id],
+      );
+      if (!agency.length) return "missing";
+      const linked = await db.query(
+        "SELECT id FROM properties WHERE agency_id = ? LIMIT 1",
+        [req.params.id],
+      );
+      const suggestions = await db.query(
+        "SELECT id FROM apartment_submissions WHERE agency_id = ? LIMIT 1",
+        [req.params.id],
+      );
+      if (linked.length || suggestions.length) return "linked";
+      await db.execute("DELETE FROM agencies WHERE id = ?", [req.params.id]);
+      return "deleted";
+    });
+    if (outcome !== "deleted") {
+      res.status(outcome === "missing" ? 404 : 409).json({
+        message:
+          outcome === "missing"
+            ? "Rental agency not found."
+            : "Reassign or merge linked properties and suggestions before deleting this agency.",
+      });
+      return;
+    }
+    res.json({ deleted: true });
   });
   router.get("/agencies/:id", async (req, res) => {
     const rows = await deps.query(
@@ -662,7 +789,7 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.get("/properties/:id", async (req, res) => {
     const rows = await deps.query<{ id: number } & Record<string, unknown>>(
-      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone, bus_route_ids, parking_type FROM properties WHERE id = ?",
+      "SELECT id, name, slug, address_line1 AS address, property_type, website_url AS website, description AS information, agency_id, address_line2, city, state, postal_code, latitude, longitude, phone, bus_route_ids, parking_type, parking_fee, parking_notes FROM properties WHERE id = ?",
       [req.params.id],
     );
     if (!rows.length) {
@@ -1044,14 +1171,11 @@ export function createStaffRouter(deps: AccountDependencies) {
       return;
     }
     const routeIds: unknown = req.body.bus_route_ids;
-    const parking = req.body.parking_type;
-    if (
-      parking !== undefined &&
-      parking !== null &&
-      parking !== "" &&
-      !["free", "monthly", "one_time"].includes(parking)
-    ) {
-      res.status(400).json({ message: "Choose a valid parking type." });
+    let parking: ReturnType<typeof parkingInput>;
+    try {
+      parking = parkingInput(req.body);
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
       return;
     }
     let busRoutes: string | null = null;
@@ -1077,7 +1201,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     let result;
     try {
       result = await deps.execute(
-        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ?, bus_route_ids = COALESCE(?, bus_route_ids), parking_type = CASE WHEN ? THEN ? ELSE parking_type END WHERE id = ?",
+        "UPDATE properties SET slug = ?, name = ?, address_line1 = ?, property_type = ?, website_url = ?, description = ?, agency_id = ?, address_line2 = ?, city = ?, state = ?, postal_code = ?, latitude = ?, longitude = ?, phone = ?, bus_route_ids = COALESCE(?, bus_route_ids), parking_type = CASE WHEN ? THEN ? ELSE parking_type END, parking_fee = CASE WHEN ? THEN ? ELSE parking_fee END, parking_notes = CASE WHEN ? THEN ? ELSE parking_notes END WHERE id = ?",
         [
           slug,
           property.name,
@@ -1094,8 +1218,15 @@ export function createStaffRouter(deps: AccountDependencies) {
           longitude,
           phone,
           busRoutes,
-          parking !== undefined,
-          parking || null,
+          req.body.parking_type !== undefined,
+          parking.type,
+          req.body.parking_fee !== undefined ||
+            req.body.parking_type === "free" ||
+            req.body.parking_type === "" ||
+            req.body.parking_type === null,
+          parking.fee,
+          req.body.parking_notes !== undefined,
+          parking.notes,
           req.params.id,
         ],
       );
