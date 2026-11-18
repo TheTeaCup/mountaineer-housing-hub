@@ -189,7 +189,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     res.json({ users: rows, total: count[0]?.total ?? 0 });
   });
   router.post("/users/external", async (req, res) => {
-    let input;
+    let input: ReturnType<typeof externalAccountInput>;
     try {
       input = externalAccountInput(req.body ?? {});
     } catch (error) {
