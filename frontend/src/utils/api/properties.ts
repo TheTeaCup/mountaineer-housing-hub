@@ -38,21 +38,26 @@ export async function fetchProperties(
   for (const [key, value] of Object.entries(filters)) {
     if (value) params.set(key, value);
   }
-  const response = await fetch(`${API_URL}/properties?${params}`, {
-    signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(10_000)])
-      : AbortSignal.timeout(10_000),
-    cache: "no-store",
-  }).catch(() => {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort();
+  else signal?.addEventListener("abort", abort, { once: true });
+  const timeout = setTimeout(abort, 10_000);
+  try {
+    const response = await fetch(`${API_URL}/properties?${params}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Properties request failed.");
+    return await response.json();
+  } catch {
     throw new Error(
       "Properties are temporarily unavailable. Please try again.",
     );
-  });
-  if (!response.ok)
-    throw new Error(
-      "Properties are temporarily unavailable. Please try again.",
-    );
-  return response.json();
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", abort);
+  }
 }
 export class PropertyRequestError extends Error {
   constructor(public readonly status: number) {
