@@ -70,11 +70,6 @@ export default function WelcomeGuide({ replay = false }: { replay?: boolean }) {
       : profile.role === "staff"
         ? [
             {
-              label: "Open Staff Dashboard",
-              href: "/staff",
-              description: "Review submissions and manage the housing catalog.",
-            },
-            {
               label: "Browse apartments",
               href: "/properties",
               description: "Explore the public housing directory.",

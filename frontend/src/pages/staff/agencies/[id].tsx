@@ -1,14 +1,15 @@
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
+import Input from "@/components/ui/form-input";
 import { notifyError, notifySuccess } from "@/components/ui/toaster";
 import { accountRequest } from "@/utils/api/account";
 import { formatPhoneNumber } from "@/utils/format-phone";
 import {
+  Box,
   Button,
   Container,
   Field,
   Heading,
-  Input,
   Stack,
   Text,
   Textarea,
@@ -67,7 +68,7 @@ export default function EditAgency({
         <NextLink href={assigned ? "/account" : "/staff/agencies"}>
           ← {assigned ? "My Account" : "Rental Agencies"}
         </NextLink>
-        <Heading as="h1" my={5}>
+        <Heading as="h1" size="2xl" color="var(--site-heading)" my={5}>
           Edit rental agency
         </Heading>
         {accessError || error ? (
@@ -81,122 +82,156 @@ export default function EditAgency({
         ) : !agency || String(agency.id) !== id ? (
           <Text>Loading rental agency…</Text>
         ) : (
-          <form
-            onSubmit={async (event) => {
-              event.preventDefault();
-              setPending(true);
-              setError("");
-              const data = Object.fromEntries(
-                new FormData(event.currentTarget),
-              );
-              try {
-                await accountRequest(
-                  `/staff/agencies/${agency.id}`,
-                  "PATCH",
-                  data,
-                );
-                setAgency((current) =>
-                  current
-                    ? {
-                        ...current,
-                        name: String(data.name),
-                        slug: String(data.slug),
-                        website: String(data.website || "") || null,
-                        phone: String(data.phone || "") || null,
-                        email: String(data.email || "") || null,
-                        information: String(data.information || "") || null,
-                      }
-                    : current,
-                );
-                notifySuccess("Rental agency saved");
-              } catch (requestError) {
-                notifyError("Could not save rental agency", requestError);
-              } finally {
-                setPending(false);
-              }
-            }}
+          <Box
+            key={agency.id}
+            bg="var(--site-surface)"
+            color="var(--site-fg)"
+            borderWidth="1px"
+            borderColor="var(--site-border)"
+            borderRadius="xl"
+            p={{ base: 4, md: 6 }}
+            boxShadow="sm"
           >
-            <Stack gap={5}>
-              <Field.Root required>
-                <Field.Label>
-                  Agency name <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="name"
-                  defaultValue={agency.name}
-                  required
-                  maxLength={255}
-                />
-              </Field.Root>
-              <Field.Root required>
-                <Field.Label>
-                  Agency URL slug <Field.RequiredIndicator />
-                </Field.Label>
-                <Input
-                  name="slug"
-                  defaultValue={agency.slug}
-                  required
-                  maxLength={140}
-                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                />
-                <Field.HelperText>
-                  /agencies/{agency.slug}. Use lowercase letters, numbers, and
-                  hyphens. Changing this slug changes the public URL.
-                </Field.HelperText>
-              </Field.Root>
-              <NextLink href={`/agencies/${agency.slug}`}>
-                View public agency page →
-              </NextLink>
-              <Field.Root>
-                <Field.Label>Website</Field.Label>
-                <Input
-                  name="website"
-                  type="url"
-                  defaultValue={agency.website ?? ""}
-                  maxLength={2048}
-                  placeholder="https://example.com"
-                />
-              </Field.Root>
-              <Field.Root>
-                <Field.Label>Phone</Field.Label>
-                <Input
-                  name="phone"
-                  type="tel"
-                  inputMode="tel"
-                  defaultValue={formatPhoneNumber(agency.phone)}
-                  maxLength={32}
-                  placeholder="(828) 555-0123"
-                  onBlur={(event) => {
-                    event.currentTarget.value = formatPhoneNumber(
-                      event.currentTarget.value,
-                    );
-                  }}
-                />
-              </Field.Root>
-              <Field.Root>
-                <Field.Label>Email</Field.Label>
-                <Input
-                  name="email"
-                  type="email"
-                  defaultValue={agency.email ?? ""}
-                  maxLength={255}
-                  placeholder="leasing@example.com"
-                />
-              </Field.Root>
-              <Field.Root>
-                <Field.Label>Description</Field.Label>
-                <Textarea
-                  name="information"
-                  defaultValue={agency.information ?? ""}
-                  rows={6}
-                  maxLength={10000}
-                />
-              </Field.Root>
-              <Button type="submit" loading={pending}>
-                Save rental agency
-              </Button>
-            </Stack>
-          </form>
+            <form
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setPending(true);
+                setError("");
+                const data = Object.fromEntries(
+                  new FormData(event.currentTarget),
+                );
+                try {
+                  await accountRequest(
+                    `/staff/agencies/${agency.id}`,
+                    "PATCH",
+                    data,
+                  );
+                  setAgency((current) =>
+                    current
+                      ? {
+                          ...current,
+                          name: String(data.name),
+                          slug: String(data.slug),
+                          website: String(data.website || "") || null,
+                          phone: String(data.phone || "") || null,
+                          email: String(data.email || "") || null,
+                          information: String(data.information || "") || null,
+                        }
+                      : current,
+                  );
+                  notifySuccess("Rental agency saved");
+                } catch (requestError) {
+                  notifyError("Could not save rental agency", requestError);
+                } finally {
+                  setPending(false);
+                }
+              }}
+            >
+              <Stack gap={6}>
+                <Field.Root required>
+                  <Field.Label>
+                    Agency name <Field.RequiredIndicator />
+                  </Field.Label>
+                  <Input
+                    name="name"
+                    defaultValue={agency.name}
+                    required
+                    maxLength={255}
+                  />
+                </Field.Root>
+                <Field.Root required>
+                  <Field.Label>
+                    Agency URL slug <Field.RequiredIndicator />
+                  </Field.Label>
+                  <Input
+                    name="slug"
+                    defaultValue={agency.slug}
+                    required
+                    maxLength={140}
+                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  />
+                  <Field.HelperText color="var(--site-muted)" lineHeight="tall">
+                    /agencies/{agency.slug}. Use lowercase letters, numbers, and
+                    hyphens. Changing this slug changes the public URL.
+                  </Field.HelperText>
+                </Field.Root>
+                <Box
+                  asChild
+                  color="var(--site-accent-fg)"
+                  fontSize="sm"
+                  fontWeight="semibold"
+                  alignSelf="start"
+                  _hover={{ textDecoration: "underline" }}
+                >
+                  <NextLink href={`/agencies/${agency.slug}`}>
+                    View public agency page →
+                  </NextLink>
+                </Box>
+                <Field.Root>
+                  <Field.Label>Website</Field.Label>
+                  <Input
+                    name="website"
+                    type="url"
+                    defaultValue={agency.website ?? ""}
+                    maxLength={2048}
+                    placeholder="https://example.com"
+                  />
+                </Field.Root>
+                <Field.Root>
+                  <Field.Label>Phone</Field.Label>
+                  <Input
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    defaultValue={formatPhoneNumber(agency.phone)}
+                    maxLength={32}
+                    placeholder="(828) 555-0123"
+                    onBlur={(event) => {
+                      event.currentTarget.value = formatPhoneNumber(
+                        event.currentTarget.value,
+                      );
+                    }}
+                  />
+                </Field.Root>
+                <Field.Root>
+                  <Field.Label>Email</Field.Label>
+                  <Input
+                    name="email"
+                    type="email"
+                    defaultValue={agency.email ?? ""}
+                    maxLength={255}
+                    placeholder="leasing@example.com"
+                  />
+                </Field.Root>
+                <Field.Root>
+                  <Field.Label>Description</Field.Label>
+                  <Textarea
+                    bg="var(--site-control)"
+                    color="var(--site-fg)"
+                    borderWidth="1px"
+                    borderColor="var(--site-border)"
+                    borderRadius="xl"
+                    p={4}
+                    lineHeight="tall"
+                    resize="vertical"
+                    _placeholder={{ color: "var(--site-muted)" }}
+                    _hover={{ borderColor: "var(--site-accent-fg)" }}
+                    _focusVisible={{
+                      outline: "2px solid var(--site-accent-fg)",
+                      outlineOffset: "2px",
+                    }}
+                    name="information"
+                    defaultValue={agency.information ?? ""}
+                    rows={6}
+                    maxLength={10000}
+                  />
+                </Field.Root>
+                <Button type="submit" loading={pending} minH="48px">
+                  Save rental agency
+                </Button>
+              </Stack>
+            </form>
+          </Box>
         )}
       </Container>
     </>
