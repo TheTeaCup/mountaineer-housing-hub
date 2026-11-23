@@ -1,0 +1,2 @@
+ALTER TABLE agencies
+ADD COLUMN address VARCHAR(500) NULL;

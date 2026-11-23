@@ -4,6 +4,7 @@ interface AgencyRow {
   id: number;
   name: string;
   slug: string;
+  address: string | null;
   description: string | null;
   website_url: string | null;
   phone: string | null;
@@ -25,7 +26,7 @@ export function createAgenciesRouter(
   query: <T>(sql: string, params?: unknown[]) => Promise<T[]>,
 ) {
   const router = Router();
-  const select = `SELECT a.id, a.name, a.slug, a.description, a.website_url, a.phone, a.email,
+  const select = `SELECT a.id, a.name, a.slug, a.address, a.description, a.website_url, a.phone, a.email,
     COUNT(DISTINCT p.id) AS property_count, COUNT(r.id) AS review_count, AVG(r.rating) AS average_rating
     FROM agencies a
     LEFT JOIN properties p ON p.agency_id = a.id AND p.status = 'published'
@@ -33,7 +34,7 @@ export function createAgenciesRouter(
 
   router.get("/", async (_req, res) => {
     const agencies = await query<AgencyRow>(
-      `${select} GROUP BY a.id, a.name, a.slug, a.description, a.website_url, a.phone, a.email
+      `${select} GROUP BY a.id, a.name, a.slug, a.address, a.description, a.website_url, a.phone, a.email
        ORDER BY property_count DESC, a.name LIMIT 500`,
     );
     res.json(agencies.map(publicAgency));
@@ -42,7 +43,7 @@ export function createAgenciesRouter(
   router.get("/:slug", async (req, res) => {
     const agencies = await query<AgencyRow>(
       `${select} WHERE a.slug = ?
-       GROUP BY a.id, a.name, a.slug, a.description, a.website_url, a.phone, a.email
+       GROUP BY a.id, a.name, a.slug, a.address, a.description, a.website_url, a.phone, a.email
        LIMIT 1`,
       [req.params.slug],
     );

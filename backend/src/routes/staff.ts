@@ -616,7 +616,7 @@ export function createStaffRouter(deps: AccountDependencies) {
   });
   router.get("/agencies/:id", async (req, res) => {
     const rows = await deps.query(
-      "SELECT id, name, slug, website_url AS website, phone, email, description AS information FROM agencies WHERE id = ?",
+      "SELECT id, name, slug, address, website_url AS website, phone, email, description AS information FROM agencies WHERE id = ?",
       [req.params.id],
     );
     if (!rows.length) {
@@ -626,7 +626,7 @@ export function createStaffRouter(deps: AccountDependencies) {
     res.json(rows[0]);
   });
   router.patch("/agencies/:id", async (req, res) => {
-    const { name, website, information, email } = req.body ?? {};
+    const { name, address, website, information, email } = req.body ?? {};
     let slug: string;
     let phone: string | null;
     try {
@@ -638,6 +638,12 @@ export function createStaffRouter(deps: AccountDependencies) {
     }
     if (typeof name !== "string" || !name.trim() || name.length > 255) {
       res.status(400).json({ message: "Enter a rental agency name." });
+      return;
+    }
+    const addressValue =
+      typeof address === "string" && address.trim() ? address.trim() : null;
+    if (addressValue && addressValue.length > 500) {
+      res.status(400).json({ message: "Agency address is too long." });
       return;
     }
     let websiteValue: string | null = null;
@@ -686,10 +692,11 @@ export function createStaffRouter(deps: AccountDependencies) {
       return;
     }
     const result = await deps.execute(
-      "UPDATE agencies SET name = ?, slug = ?, website_url = ?, phone = ?, email = ?, description = ? WHERE id = ?",
+      "UPDATE agencies SET name = ?, slug = ?, address = ?, website_url = ?, phone = ?, email = ?, description = ? WHERE id = ?",
       [
         name.trim(),
         slug,
+        addressValue,
         websiteValue,
         phone,
         emailValue,
