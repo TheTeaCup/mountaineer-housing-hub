@@ -294,11 +294,12 @@ export default function PropertiesList() {
                 </Box>
                 <FilterSelect
                   name="rentBasis"
-                  label="Rent quoted per"
+                  label="Rent price applies to"
                   defaultValue={filters.rentBasis || "per_bedroom"}
+                  helperText="Per unit is the total for the entire apartment. Per bedroom is the price for one bedroom."
                   options={[
-                    { value: "per_bedroom", label: "Bedroom / month" },
-                    { value: "per_unit", label: "Whole unit / month" },
+                    { value: "per_bedroom", label: "Each bedroom / month" },
+                    { value: "per_unit", label: "Entire apartment / month" },
                   ]}
                 />
                 <FilterSelect

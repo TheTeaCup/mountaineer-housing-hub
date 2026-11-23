@@ -9,6 +9,7 @@ import appalCart from "@/data/appalcart.json";
 import type { Property } from "@/types/properties";
 import {
   fetchProperty,
+  perBedroomRentNote,
   planRent,
   PropertyRequestError,
   propertyTypeLabel,
@@ -585,6 +586,16 @@ export default function PropertyPage({
                               : ""}
                           </Text>
                           <Text fontWeight="bold">{planRent(plan)}</Text>
+                          {perBedroomRentNote(plan) && (
+                            <Text
+                              mt={2}
+                              fontSize="sm"
+                              color="var(--site-muted)"
+                            >
+                              Per unit is the full apartment price.{" "}
+                              {perBedroomRentNote(plan)}
+                            </Text>
+                          )}
                           {plan.description && (
                             <Text mt={3} whiteSpace="pre-wrap">
                               {plan.description}

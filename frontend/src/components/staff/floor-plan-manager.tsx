@@ -1,3 +1,5 @@
+import FormInput from "@/components/ui/form-input";
+import FormSelect from "@/components/ui/form-select";
 import type { FloorPlan } from "@/types/properties";
 import { accountRequest } from "@/utils/api/account";
 import { planRent } from "@/utils/api/properties";
@@ -7,8 +9,6 @@ import {
   Field,
   Flex,
   Heading,
-  Input,
-  NativeSelect,
   SimpleGrid,
   Stack,
   Text,
@@ -110,6 +110,7 @@ export default function FloorPlanManager({
   }
   return (
     <Box
+      bg="var(--site-surface)"
       borderWidth="1px"
       borderColor="var(--site-border)"
       borderRadius="xl"
@@ -127,6 +128,7 @@ export default function FloorPlanManager({
           {floorPlans.map((item) => (
             <Box
               key={item.id}
+              bg="var(--site-control)"
               borderWidth="1px"
               borderColor="var(--site-border)"
               borderRadius="lg"
@@ -234,7 +236,7 @@ export default function FloorPlanManager({
               <Field.Label>
                 Name <Field.RequiredIndicator />
               </Field.Label>
-              <Input
+              <FormInput
                 ref={nameInput}
                 value={plan.name}
                 onChange={(event) => update("name", event.target.value)}
@@ -247,7 +249,7 @@ export default function FloorPlanManager({
                 <Field.Label>
                   Bedrooms <Field.RequiredIndicator />
                 </Field.Label>
-                <Input
+                <FormInput
                   type="number"
                   min={0}
                   max={255}
@@ -260,7 +262,7 @@ export default function FloorPlanManager({
                 <Field.Label>
                   Bathrooms <Field.RequiredIndicator />
                 </Field.Label>
-                <Input
+                <FormInput
                   type="number"
                   min={0.1}
                   max={99.9}
@@ -271,7 +273,7 @@ export default function FloorPlanManager({
               </Field.Root>
               <Field.Root>
                 <Field.Label>Square feet</Field.Label>
-                <Input
+                <FormInput
                   type="number"
                   min={1}
                   step={1}
@@ -281,24 +283,20 @@ export default function FloorPlanManager({
                   }
                 />
               </Field.Root>
-              <Field.Root required>
-                <Field.Label>Rent basis</Field.Label>
-                <NativeSelect.Root>
-                  <NativeSelect.Field
-                    value={plan.rent_basis}
-                    onChange={(event) =>
-                      update("rent_basis", event.target.value)
-                    }
-                  >
-                    <option value="per_unit">Per unit</option>
-                    <option value="per_bedroom">Per bedroom</option>
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Field.Root>
+              <FormSelect
+                label="Rent basis"
+                value={plan.rent_basis}
+                onValueChange={(value) => update("rent_basis", value)}
+                required
+                helperText="Per unit is the whole apartment total; per bedroom is one bedroom's price. Example: $1,320 for a two-bedroom unit is $660 per bedroom if split evenly."
+                options={[
+                  { value: "per_unit", label: "Per unit" },
+                  { value: "per_bedroom", label: "Per bedroom" },
+                ]}
+              />
               <Field.Root>
                 <Field.Label>Minimum monthly rent</Field.Label>
-                <Input
+                <FormInput
                   type="number"
                   min={0}
                   step="0.01"
@@ -309,7 +307,7 @@ export default function FloorPlanManager({
               </Field.Root>
               <Field.Root>
                 <Field.Label>Maximum monthly rent</Field.Label>
-                <Input
+                <FormInput
                   type="number"
                   min={0}
                   step="0.01"
@@ -325,6 +323,18 @@ export default function FloorPlanManager({
             <Field.Root>
               <Field.Label>Additional notes</Field.Label>
               <Textarea
+                bg="var(--site-control)"
+                color="var(--site-fg)"
+                borderWidth="1px"
+                borderColor="var(--site-border)"
+                borderRadius="xl"
+                p={4}
+                _placeholder={{ color: "var(--site-muted)" }}
+                _hover={{ borderColor: "var(--site-accent-fg)" }}
+                _focusVisible={{
+                  outline: "2px solid var(--site-accent-fg)",
+                  outlineOffset: "2px",
+                }}
                 value={plan.description}
                 onChange={(event) => update("description", event.target.value)}
                 maxLength={2000}

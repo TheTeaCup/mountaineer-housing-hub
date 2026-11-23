@@ -1,5 +1,9 @@
 import type { Property } from "@/types/properties";
-import { propertyTypeLabel, rentSummary } from "@/utils/api/properties";
+import {
+  perBedroomRentNote,
+  propertyTypeLabel,
+  rentSummary,
+} from "@/utils/api/properties";
 import { Box, Button, Heading, Stack, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import FavoriteButton from "./favorite-button";
@@ -18,6 +22,17 @@ export default function PropertiesCard({
   sponsored?: boolean;
 }) {
   const prices = rentSummary(property.floor_plans);
+  const perUnitExample = property.floor_plans
+    .filter(
+      (plan) =>
+        plan.rent_basis === "per_unit" &&
+        plan.bedrooms > 0 &&
+        plan.rent_min !== null,
+    )
+    .sort((a, b) => a.rent_min! / a.bedrooms - b.rent_min! / b.bedrooms)[0];
+  const perBedroomNote = perUnitExample
+    ? perBedroomRentNote(perUnitExample)
+    : null;
   return (
     <Box
       position="relative"
@@ -86,6 +101,13 @@ export default function PropertiesCard({
           ))
         ) : (
           <Text color="var(--site-muted)">Contact property for pricing</Text>
+        )}
+        {perBedroomNote && (
+          <Box p={3} bg="var(--site-muted-surface)" borderRadius="md">
+            <Text fontSize="xs" color="var(--site-muted)">
+              Per unit means the full apartment price. {perBedroomNote}
+            </Text>
+          </Box>
         )}
         <Text fontSize="sm" color="var(--site-muted)">
           {property.address}

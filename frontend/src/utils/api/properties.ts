@@ -119,6 +119,20 @@ export function planRent(plan: FloorPlan): string {
       : dollars(plan.rent_min);
   return `${amount} / ${plan.rent_basis === "per_unit" ? "unit" : "bedroom"} / month`;
 }
+export function perBedroomRentNote(plan: FloorPlan): string | null {
+  if (
+    plan.rent_basis !== "per_unit" ||
+    plan.bedrooms < 1 ||
+    plan.rent_min === null
+  )
+    return null;
+  const currency = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  });
+  return `Starting at ${currency.format(plan.rent_min)} per unit / ${plan.bedrooms} ${plan.bedrooms === 1 ? "bedroom" : "bedrooms"} = ${currency.format(plan.rent_min / plan.bedrooms)} per bedroom / month if split evenly.`;
+}
 export const propertyTypeLabel = (type: string) =>
   type === "apartment_complex"
     ? "Apartment community"

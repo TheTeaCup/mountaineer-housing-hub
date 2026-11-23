@@ -21,6 +21,7 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { FiArrowLeft, FiRefreshCw, FiUserPlus } from "react-icons/fi";
 
 interface StaffReview {
   id: number;
@@ -294,7 +295,25 @@ export default function StaffDashboard({
       <SEO title={`Staff · ${title}`} noIndex />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1100px" py={10}>
-          <NextLink href="/staff">← Staff Dashboard</NextLink>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            borderRadius="full"
+            px={4}
+            minH="36px"
+            borderColor="var(--site-border)"
+            bg="var(--site-surface)"
+            _hover={{
+              borderColor: "var(--site-accent-fg)",
+              bg: "var(--site-control-hover)",
+            }}
+          >
+            <NextLink href="/staff">
+              <FiArrowLeft aria-hidden="true" />
+              Staff Dashboard
+            </NextLink>
+          </Button>
           <Heading as="h1" mt={4} mb={3}>
             {title}
           </Heading>
@@ -322,8 +341,18 @@ export default function StaffDashboard({
               <Flex gap={3} mb={6} flexWrap="wrap">
                 <Button
                   variant="outline"
+                  borderRadius="lg"
+                  minH="44px"
+                  px={5}
+                  borderColor="var(--site-border)"
+                  bg="var(--site-surface)"
+                  _hover={{
+                    borderColor: "var(--site-accent-fg)",
+                    bg: "var(--site-control-hover)",
+                  }}
                   onClick={() => setRevision((value) => value + 1)}
                 >
+                  <FiRefreshCw aria-hidden="true" />
                   Refresh
                 </Button>
               </Flex>
@@ -793,9 +822,25 @@ export default function StaffDashboard({
                   <Heading as="h2" size="lg" mb={3}>
                     Registered users ({total})
                   </Heading>
-                  <NextLink href="/staff/users/new">
-                    <Button mb={4}>Create agency / external account</Button>
-                  </NextLink>
+                  <Button
+                    asChild
+                    mb={4}
+                    minH="44px"
+                    px={5}
+                    borderRadius="lg"
+                    fontWeight="semibold"
+                    boxShadow="0 2px 8px rgb(0 0 0 / 16%)"
+                    _hover={{
+                      transform: "translateY(-1px)",
+                      boxShadow: "0 5px 14px rgb(0 0 0 / 22%)",
+                    }}
+                    transition="transform 0.15s ease, box-shadow 0.15s ease"
+                  >
+                    <NextLink href="/staff/users/new">
+                      <FiUserPlus aria-hidden="true" />
+                      Create agency / external account
+                    </NextLink>
+                  </Button>
                   <Box overflowX="auto" {...panel}>
                     <table
                       style={{
