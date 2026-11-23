@@ -23,6 +23,7 @@ import {
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { FiArrowLeft, FiMapPin } from "react-icons/fi";
 
 const PAGE_SIZE = 10;
 
@@ -95,7 +96,23 @@ export default function AgencyPage() {
       <SEO title={agency?.name || "Rental Agency"} />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1100px" py={10}>
-          <NextLink href="/agencies">← All rental agencies</NextLink>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            borderRadius="full"
+            px={4}
+            borderColor="var(--site-border)"
+            color="var(--site-fg)"
+            _hover={{
+              bg: "var(--site-muted-surface)",
+              borderColor: "var(--site-muted)",
+            }}
+          >
+            <NextLink href="/agencies">
+              <FiArrowLeft aria-hidden="true" /> All rental agencies
+            </NextLink>
+          </Button>
           {error ? (
             <Heading as="h1" size="lg" mt={6}>
               {error}
@@ -138,9 +155,36 @@ export default function AgencyPage() {
                     {agencyRatingSummary(agency)}
                   </Text>
                   {agency.description && (
-                    <Text mt={5} whiteSpace="pre-wrap">
-                      {agency.description}
-                    </Text>
+                    <Box
+                      mt={5}
+                      p={{ base: 4, md: 5 }}
+                      bg="var(--site-muted-surface)"
+                      borderWidth="1px"
+                      borderColor="var(--site-border)"
+                      borderLeftWidth="4px"
+                      borderLeftColor="#ffc72c"
+                      borderRadius="xl"
+                      boxShadow="0 8px 24px rgb(0 0 0 / 10%)"
+                    >
+                      <Text
+                        mb={2}
+                        fontSize="xs"
+                        fontWeight="bold"
+                        textTransform="uppercase"
+                        letterSpacing="0.1em"
+                        color="var(--site-heading)"
+                      >
+                        About this agency
+                      </Text>
+                      <Text
+                        whiteSpace="pre-wrap"
+                        maxW="68ch"
+                        lineHeight="1.8"
+                        color="var(--site-muted)"
+                      >
+                        {agency.description}
+                      </Text>
+                    </Box>
                   )}
                 </Box>
                 <Stack
@@ -155,6 +199,24 @@ export default function AgencyPage() {
                   <Heading as="h2" size="md">
                     Contact
                   </Heading>
+                  {agency.address && (
+                    <Text
+                      display="flex"
+                      alignItems="start"
+                      gap={2}
+                      fontSize="sm"
+                      lineHeight="tall"
+                    >
+                      <FiMapPin aria-hidden="true" style={{ marginTop: 4 }} />
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(agency.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {agency.address}
+                      </a>
+                    </Text>
+                  )}
                   {agency.phone && (
                     <a href={phoneHref(agency.phone)}>
                       {formatPhoneNumber(agency.phone)}
@@ -168,7 +230,10 @@ export default function AgencyPage() {
                       <Button w="100%">Visit agency website</Button>
                     </a>
                   )}
-                  {!agency.phone && !agency.email && !website && (
+                  {!agency.address &&
+                    !agency.phone &&
+                    !agency.email &&
+                    !website && (
                     <Text color="var(--site-muted)">
                       Contact information has not been provided.
                     </Text>

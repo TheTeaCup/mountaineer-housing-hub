@@ -31,6 +31,7 @@ import type { GetServerSideProps } from "next";
 import NextLink from "next/link";
 import { useRouter } from "next/router";
 import {
+  FiArrowLeft,
   FiColumns,
   FiEdit2,
   FiExternalLink,
@@ -189,7 +190,23 @@ export default function PropertyPage({
       />
       <Box flex="1" bg="var(--site-bg)" color="var(--site-fg)">
         <Container maxW="1100px" py={10}>
-          <NextLink href="/properties">← All properties</NextLink>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            borderRadius="full"
+            px={4}
+            borderColor="var(--site-border)"
+            color="var(--site-fg)"
+            _hover={{
+              bg: "var(--site-muted-surface)",
+              borderColor: "var(--site-muted)",
+            }}
+          >
+            <NextLink href="/properties">
+              <FiArrowLeft aria-hidden="true" /> All properties
+            </NextLink>
+          </Button>
           {error ? (
             <Box role="alert" mt={6}>
               <Heading as="h1" size="lg">
@@ -253,11 +270,14 @@ export default function PropertyPage({
                     name={property.name}
                   />
                   <Box
-                    bg="var(--site-surface)"
+                    bg="var(--site-muted-surface)"
                     borderWidth="1px"
                     borderColor="var(--site-border)"
                     borderRadius="xl"
                     p={{ base: 5, md: 7 }}
+                    borderLeftWidth="4px"
+                    borderLeftColor="#ffc72c"
+                    boxShadow="0 8px 24px rgb(0 0 0 / 10%)"
                   >
                     <Heading
                       as="h2"

@@ -817,6 +817,7 @@ export default function StaffDashboard({
                             "Status",
                             "Joined",
                             "Last sign-in",
+                            "Edit",
                           ].map((label) => (
                             <th key={label} scope="col" style={{ padding: 12 }}>
                               {label}
@@ -828,7 +829,7 @@ export default function StaffDashboard({
                         {users.map((user) => (
                           <tr key={user.id}>
                             {[
-                              user.username || "View user",
+                              user.username || "No username",
                               user.email,
                               accountRoleLabel(user.role),
                               user.status,
@@ -844,15 +845,21 @@ export default function StaffDashboard({
                                   borderTop: "1px solid var(--site-border)",
                                 }}
                               >
-                                {index === 0 ? (
-                                  <NextLink href={`/staff/users/${user.id}`}>
-                                    {value} · Edit →
-                                  </NextLink>
-                                ) : (
-                                  value
-                                )}
+                                {value}
                               </td>
                             ))}
+                            <td
+                              style={{
+                                padding: 12,
+                                borderTop: "1px solid var(--site-border)",
+                              }}
+                            >
+                              <Button asChild size="sm" variant="outline">
+                                <NextLink href={`/staff/users/${user.id}`}>
+                                  Edit
+                                </NextLink>
+                              </Button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

@@ -116,21 +116,13 @@ export default function MapComponent({
   const mapped = useMemo(() => mapLocations(properties), [properties]);
   const focused = mapped.find((property) => property.slug === propertyQuery);
   const visible = mapped.filter((property) =>
-    property.property_type === "townhome"
-      ? showTownhomes
-      : property.property_type === "apartment_complex"
-        ? showComplexes
-        : true,
+    property.property_type === "townhome" ? showTownhomes : showComplexes,
   );
   const propertyFilter = useMemo<maplibregl.FilterSpecification>(
     () => [
-      "all",
-      [
-        "any",
-        ["!=", ["get", "propertyType"], "apartment_complex"],
-        showComplexes,
-      ],
-      ["any", ["!=", ["get", "propertyType"], "townhome"], showTownhomes],
+      "any",
+      ["all", ["==", ["get", "propertyType"], "townhome"], showTownhomes],
+      ["all", ["!=", ["get", "propertyType"], "townhome"], showComplexes],
     ],
     [showComplexes, showTownhomes],
   );
@@ -428,12 +420,6 @@ export default function MapComponent({
                 aria-live="polite"
               >
                 {visible.length} of {mapped.length} properties shown
-                {mapped.some(
-                  (property) =>
-                    !["apartment_complex", "townhome"].includes(
-                      property.property_type,
-                    ),
-                ) && ". Other rental types remain visible."}
               </Text>
             )}
             <Flex

@@ -17,6 +17,7 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { FiArrowLeft } from "react-icons/fi";
 import SubmissionTerms, { useSubmissionTerms } from "./submission-terms";
 
 const propertyTypes = [
@@ -76,9 +77,25 @@ export default function ApartmentForm() {
     );
   return (
     <>
-      <NextLink href="/submit">
-        ← Back to {isPropertyManager ? "Submit" : "apartment reviews"}
-      </NextLink>
+      <Button
+        asChild
+        variant="outline"
+        size="sm"
+        borderRadius="full"
+        px={4}
+        mb={1}
+        borderColor="var(--site-border)"
+        color="var(--site-fg)"
+        _hover={{
+          bg: "var(--site-muted-surface)",
+          borderColor: "var(--site-muted)",
+        }}
+      >
+        <NextLink href="/submit">
+          <FiArrowLeft aria-hidden="true" />
+          Back to {isPropertyManager ? "Submit" : "apartment reviews"}
+        </NextLink>
+      </Button>
       <Heading as="h1" mt={4} mb={3}>
         {isPropertyManager
           ? "Submit a Property You Manage"

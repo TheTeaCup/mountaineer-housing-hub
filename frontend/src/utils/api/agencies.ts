@@ -4,6 +4,7 @@ export interface AgencySummary {
   id: number;
   name: string;
   slug: string;
+  address: string | null;
   description: string | null;
   website_url: string | null;
   phone: string | null;

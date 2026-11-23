@@ -23,6 +23,7 @@ interface AgencyForm {
   id: number;
   name: string;
   slug: string;
+  address: string | null;
   website: string | null;
   phone: string | null;
   email: string | null;
@@ -113,6 +114,7 @@ export default function EditAgency({
                           ...current,
                           name: String(data.name),
                           slug: String(data.slug),
+                          address: String(data.address || "") || null,
                           website: String(data.website || "") || null,
                           phone: String(data.phone || "") || null,
                           email: String(data.email || "") || null,
@@ -168,6 +170,15 @@ export default function EditAgency({
                     View public agency page →
                   </NextLink>
                 </Box>
+                <Field.Root>
+                  <Field.Label>Office address</Field.Label>
+                  <Input
+                    name="address"
+                    defaultValue={agency.address ?? ""}
+                    maxLength={500}
+                    placeholder="Street, city, state, ZIP code"
+                  />
+                </Field.Root>
                 <Field.Root>
                   <Field.Label>Website</Field.Label>
                   <Input
