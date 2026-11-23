@@ -1,8 +1,13 @@
 import { Input, type InputProps } from "@chakra-ui/react";
+import { forwardRef } from "react";
 
-export default function FormInput(props: InputProps) {
+export default forwardRef<HTMLInputElement, InputProps>(function FormInput(
+  props,
+  ref,
+) {
   return (
     <Input
+      ref={ref}
       minH="48px"
       px={4}
       borderWidth="1px"
@@ -19,4 +24,4 @@ export default function FormInput(props: InputProps) {
       {...props}
     />
   );
-}
+});
