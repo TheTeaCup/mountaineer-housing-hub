@@ -420,6 +420,51 @@ export function createAccountRouter(deps: AccountDependencies) {
     );
     res.status(201).json({ status: "pending" });
   });
+  router.post("/property-corrections", async (req, res) => {
+    const propertyId = Number(req.body?.property_id);
+    const field = req.body?.reported_field;
+    const details = req.body?.details;
+    const validFields = [
+      "address",
+      "contact",
+      "rent",
+      "floor_plan",
+      "description",
+      "amenities",
+      "other",
+    ];
+    if (!Number.isSafeInteger(propertyId) || propertyId < 1) {
+      res.status(400).json({ message: "Choose a valid property listing." });
+      return;
+    }
+    if (!validFields.includes(field)) {
+      res.status(400).json({ message: "Choose the information to update." });
+      return;
+    }
+    if (
+      typeof details !== "string" ||
+      !details.trim() ||
+      details.length > 3000
+    ) {
+      res.status(400).json({
+        message: "Describe the correction in 1 to 3,000 characters.",
+      });
+      return;
+    }
+    const properties = await deps.query<{ id: number }>(
+      "SELECT id FROM properties WHERE id = ? AND status = 'published'",
+      [propertyId],
+    );
+    if (!properties[0]) {
+      res.status(404).json({ message: "This property listing was not found." });
+      return;
+    }
+    await deps.execute(
+      "INSERT INTO property_correction_reports (property_id, user_id, reported_field, details) VALUES (?, ?, ?, ?)",
+      [propertyId, res.locals.userId, field, details.trim()],
+    );
+    res.status(201).json({ status: "pending" });
+  });
   router.patch("/reviews/:id", async (req, res) => {
     if (res.locals.role === "property_manager") {
       res.status(403).json({

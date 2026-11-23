@@ -20,7 +20,8 @@
     "format": "prettier --write \"**/*.{json,ts,sql}\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "db:parking": "node src/scripts/migrateParking.mjs"
+    "db:parking": "node src/scripts/migrateParking.mjs",
+    "db:property-corrections": "node src/scripts/migratePropertyCorrections.mjs"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.6",

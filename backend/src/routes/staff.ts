@@ -156,11 +156,12 @@ export function createStaffRouter(deps: AccountDependencies) {
       loadSetupAudit(deps),
       deps.query<{
         pending_submissions: number;
+        pending_corrections: number;
         pending_reviews: number;
         agencies: number;
         users: number;
       }>(
-        "SELECT (SELECT COUNT(*) FROM apartment_submissions WHERE status = 'pending') AS pending_submissions, (SELECT COUNT(*) FROM reviews WHERE status = 'pending') AS pending_reviews, (SELECT COUNT(*) FROM agencies) AS agencies, (SELECT COUNT(*) FROM users) AS users",
+        "SELECT (SELECT COUNT(*) FROM apartment_submissions WHERE status = 'pending') AS pending_submissions, (SELECT COUNT(*) FROM property_correction_reports WHERE status = 'pending') AS pending_corrections, (SELECT COUNT(*) FROM reviews WHERE status = 'pending') AS pending_reviews, (SELECT COUNT(*) FROM agencies) AS agencies, (SELECT COUNT(*) FROM users) AS users",
       ),
     ]);
     const count = counts[0];
@@ -172,10 +173,34 @@ export function createStaffRouter(deps: AccountDependencies) {
         agency_count: audit.agency_count,
       },
       pending_submissions: Number(count?.pending_submissions ?? 0),
+      pending_corrections: Number(count?.pending_corrections ?? 0),
       pending_reviews: Number(count?.pending_reviews ?? 0),
       agencies: Number(count?.agencies ?? 0),
       users: Number(count?.users ?? 0),
     });
+  });
+  router.get("/corrections", async (_req, res) => {
+    const reports = await deps.query(
+      "SELECT r.id, r.property_id, r.reported_field, r.details, r.created_at, p.name AS property_name, p.slug AS property_slug, u.username FROM property_correction_reports r JOIN properties p ON p.id = r.property_id LEFT JOIN user_profiles u ON u.user_id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at, r.id LIMIT 200",
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.json(reports);
+  });
+  router.patch("/corrections/:id", async (req, res) => {
+    const status = req.body?.status;
+    if (status !== "reviewed" && status !== "dismissed") {
+      res.status(400).json({ message: "Choose reviewed or dismissed." });
+      return;
+    }
+    const result = await deps.execute(
+      "UPDATE property_correction_reports SET status = ?, reviewed_at = CURRENT_TIMESTAMP(3) WHERE id = ? AND status = 'pending'",
+      [status, req.params.id],
+    );
+    if (!result.affectedRows) {
+      res.status(409).json({ message: "This report was already reviewed." });
+      return;
+    }
+    res.json({ updated: true });
   });
   router.get("/users", async (req, res) => {
     const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
