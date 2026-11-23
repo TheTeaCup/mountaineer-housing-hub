@@ -245,8 +245,10 @@ export default function PropertiesList() {
                 type="button"
                 variant="outline"
                 size="sm"
-                alignSelf="end"
-                minH="44px"
+                alignSelf={{ base: "start", lg: "center" }}
+                justifySelf={{ base: "stretch", lg: "start" }}
+                w={{ base: "100%", lg: "auto" }}
+                minH="48px"
                 borderRadius="full"
                 bg="var(--site-control)"
                 borderColor="var(--site-border)"
