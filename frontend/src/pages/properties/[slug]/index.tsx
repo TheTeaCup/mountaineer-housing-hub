@@ -1,6 +1,7 @@
 import CostCalculator from "@/components/properties/cost-calculator";
 import FavoriteButton from "@/components/properties/favorite-button";
 import PropertyPhotoGallery from "@/components/properties/photo-gallery";
+import PropertyCorrectionForm from "@/components/properties/property-correction-form";
 import PropertyReviews from "@/components/properties/reviews";
 import SEO from "@/components/seo";
 import { useAccount } from "@/components/ui/account-provider";
@@ -626,6 +627,10 @@ export default function PropertyPage({
                   }
                 />
               </Stack>
+              <PropertyCorrectionForm
+                propertyId={property.id}
+                propertyName={property.name}
+              />
             </>
           )}
         </Container>

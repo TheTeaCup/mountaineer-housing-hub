@@ -69,6 +69,16 @@ interface SiteUser {
   created_at: string;
   last_login: string | null;
 }
+interface PropertyCorrectionReport {
+  id: number;
+  property_id: number;
+  reported_field: string;
+  details: string;
+  created_at: string;
+  property_name: string;
+  property_slug: string;
+  username: string | null;
+}
 interface StaffProperty {
   id: number;
   name: string;
@@ -83,7 +93,7 @@ const ADMIN_PAGE_SIZE = 10;
 export default function StaffDashboard({
   section,
 }: {
-  section: "reviews" | "apartments" | "agencies" | "users";
+  section: "reviews" | "apartments" | "agencies" | "users" | "corrections";
 }) {
   const { session, loading } = useAuth();
   const { profile, error: profileError } = useAccount();
@@ -95,7 +105,9 @@ export default function StaffDashboard({
         ? "Rental agencies"
         : section === "apartments"
           ? "Apartment submissions"
-          : "Review submissions";
+          : section === "corrections"
+            ? "Property updates"
+            : "Review submissions";
   const [reviews, setReviews] = useState<StaffReview[]>([]);
   const [reviewPage, setReviewPage] = useState(1);
   const [reviewStatus, setReviewStatus] = useState("pending");
@@ -113,6 +125,9 @@ export default function StaffDashboard({
   const [agencyPage, setAgencyPage] = useState(1);
   const [editId, setEditId] = useState<number | null>(null);
   const [users, setUsers] = useState<SiteUser[]>([]);
+  const [corrections, setCorrections] = useState<PropertyCorrectionReport[]>(
+    [],
+  );
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -149,6 +164,12 @@ export default function StaffDashboard({
         } else if (tab === "agencies") {
           const data = await accountRequest<RentalAgency[]>("/staff/agencies");
           if (active) setAgencies(data);
+        } else if (tab === "corrections") {
+          const data =
+            await accountRequest<PropertyCorrectionReport[]>(
+              "/staff/corrections",
+            );
+          if (active) setCorrections(data);
         } else {
           const data = await accountRequest<{
             users: SiteUser[];
@@ -193,6 +214,25 @@ export default function StaffDashboard({
       setRevision((value) => value + 1);
     } catch (err) {
       notifyError("Could not review submission", err);
+    } finally {
+      setPending(null);
+    }
+  }
+  async function reviewCorrection(
+    id: number,
+    status: "reviewed" | "dismissed",
+  ) {
+    setPending(id);
+    setError("");
+    try {
+      await accountRequest(`/staff/corrections/${id}`, "PATCH", { status });
+      notifySuccess(
+        status === "reviewed" ? "Report marked reviewed" : "Report dismissed",
+        "The report was removed from the pending queue.",
+      );
+      setRevision((value) => value + 1);
+    } catch (err) {
+      notifyError("Could not update report", err);
     } finally {
       setPending(null);
     }
@@ -816,6 +856,70 @@ export default function StaffDashboard({
                     label="Rental agencies"
                     onPageChange={setAgencyPage}
                   />
+                </Stack>
+              ) : tab === "corrections" ? (
+                <Stack gap={4}>
+                  <Text fontSize="sm" color="var(--site-muted)">
+                    Review user reports about inaccurate or outdated property
+                    information. Update the listing before marking a report
+                    reviewed.
+                  </Text>
+                  {!corrections.length && (
+                    <Text>No property updates are waiting for review.</Text>
+                  )}
+                  {corrections.map((report) => (
+                    <Box {...panel} key={report.id}>
+                      <Flex
+                        align="start"
+                        justify="space-between"
+                        gap={4}
+                        wrap="wrap"
+                      >
+                        <Box minW={0}>
+                          <Heading as="h3" size="md">
+                            {report.property_name}
+                          </Heading>
+                          <Text mt={1} fontSize="sm" color="var(--site-muted)">
+                            {report.reported_field.replace(/_/g, " ")} ·
+                            reported by {report.username || "Deleted account"} ·{" "}
+                            {new Date(report.created_at).toLocaleString()}
+                          </Text>
+                          <Text mt={3} whiteSpace="pre-wrap">
+                            {report.details}
+                          </Text>
+                          <Button asChild variant="outline" size="sm" mt={4}>
+                            <NextLink
+                              href={`/staff/properties/${report.property_id}`}
+                            >
+                              Open property listing
+                            </NextLink>
+                          </Button>
+                        </Box>
+                        <Flex gap={2}>
+                          <Button
+                            size="sm"
+                            disabled={pending !== null}
+                            onClick={() =>
+                              void reviewCorrection(report.id, "reviewed")
+                            }
+                          >
+                            Mark reviewed
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            colorPalette="red"
+                            disabled={pending !== null}
+                            onClick={() =>
+                              void reviewCorrection(report.id, "dismissed")
+                            }
+                          >
+                            Dismiss
+                          </Button>
+                        </Flex>
+                      </Flex>
+                    </Box>
+                  ))}
                 </Stack>
               ) : (
                 <>

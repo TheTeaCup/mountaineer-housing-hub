@@ -18,6 +18,7 @@ import {
   FiBarChart2,
   FiBriefcase,
   FiClipboard,
+  FiEdit3,
   FiHome,
   FiUsers,
 } from "react-icons/fi";
@@ -25,6 +26,7 @@ import {
 interface DashboardCounts {
   audit: { issue_count: number; property_count: number; agency_count: number };
   pending_submissions: number;
+  pending_corrections: number;
   pending_reviews: number;
   agencies: number;
   users: number;
@@ -91,6 +93,17 @@ export default function StaffHome() {
       label: "pending suggestions",
       pending: true,
       detail: "Property and agency suggestions awaiting staff review.",
+    },
+    {
+      href: "/staff/corrections",
+      title: "Property updates",
+      icon: FiEdit3,
+      description:
+        "Review reports from users about incorrect or outdated property details.",
+      count: counts?.pending_corrections,
+      label: "pending updates",
+      pending: true,
+      detail: "User reports about property listing information.",
     },
     {
       href: "/staff/agencies",
